@@ -1,0 +1,21 @@
+services:
+  server:
+    build:
+      context: ./server
+    ports:
+      - "3000:3000"
+    volumes:
+      - server_data:/app/data
+    restart: unless-stopped
+
+  client:
+    build:
+      context: ./client
+    ports:
+      - "80:80"
+    depends_on:
+      - server
+    restart: unless-stopped
+
+volumes:
+  server_data:
