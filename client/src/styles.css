@@ -1,13 +1,6 @@
-@import "tailwindcss";
-
-@theme {
-  --color-accent: var(--accent);
-  --color-bg: var(--bg);
-  --color-text: var(--text);
-  --color-surface: var(--surface);
-  --color-border: var(--border);
-  --color-surface-hover: var(--surface-hover);
-}
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
 
 :root {
   --accent: #2563eb;
@@ -34,10 +27,7 @@ body {
   color: var(--text);
   font-family: system-ui, -apple-system, sans-serif;
   margin: 0;
-}
-
-button {
-  cursor: pointer;
+  padding: 0.5rem 0;
 }
 
 input, select, textarea {
@@ -47,6 +37,19 @@ input, select, textarea {
   border-radius: 0.375rem;
   padding: 0.5rem 0.75rem;
   font-size: 0.875rem;
+  width: 100%;
+  box-sizing: border-box;
+}
+
+input[type="color"] {
+  width: auto;
+  padding: 0;
+  border: none;
+  border-radius: 0.25rem;
+}
+
+input[type="checkbox"] {
+  width: auto;
 }
 
 input:focus, select:focus, textarea:focus {
@@ -54,9 +57,15 @@ input:focus, select:focus, textarea:focus {
   outline-offset: -1px;
 }
 
+button {
+  cursor: pointer;
+}
+
+/* ── Buttons ── */
 .btn {
   display: inline-flex;
   align-items: center;
+  justify-content: center;
   gap: 0.375rem;
   padding: 0.5rem 1rem;
   border-radius: 0.375rem;
@@ -66,39 +75,29 @@ input:focus, select:focus, textarea:focus {
   transition: opacity 0.15s;
 }
 
-.btn:hover {
-  opacity: 0.85;
-}
+.btn:hover { opacity: 0.85; }
 
 .btn-primary {
   background-color: var(--accent);
-  color: #ffffff;
+  color: #fff;
 }
 
 .btn-outline {
-  background-color: transparent;
+  background: transparent;
   border: 1px solid var(--border);
   color: var(--text);
 }
-
-.btn-outline:hover {
-  background-color: var(--surface-hover);
-}
+.btn-outline:hover { background-color: var(--surface-hover); }
 
 .btn-ghost {
-  background-color: transparent;
+  background: transparent;
   color: var(--text);
 }
+.btn-ghost:hover { background-color: var(--surface-hover); }
 
-.btn-ghost:hover {
-  background-color: var(--surface-hover);
-}
+.btn-sm { padding: 0.25rem 0.5rem; font-size: 0.75rem; }
 
-.btn-sm {
-  padding: 0.25rem 0.5rem;
-  font-size: 0.75rem;
-}
-
+/* ── Cards ── */
 .card {
   background-color: var(--surface);
   border: 1px solid var(--border);
@@ -106,60 +105,66 @@ input:focus, select:focus, textarea:focus {
   padding: 1rem;
 }
 
+/* ── Badge ── */
 .badge {
   display: inline-block;
   padding: 0.125rem 0.5rem;
   border-radius: 9999px;
   font-size: 0.75rem;
   font-weight: 500;
+  white-space: nowrap;
 }
 
-.tab-bar {
+/* ── Toggle pill (reemplaza checkboxes) ── */
+.toggle-pill {
   display: flex;
-  border-bottom: 2px solid var(--border);
-  gap: 0;
-}
-
-.tab-item {
-  padding: 0.75rem 1.25rem;
-  font-size: 0.875rem;
-  font-weight: 500;
-  color: var(--text);
-  opacity: 0.6;
-  border-bottom: 2px solid transparent;
-  margin-bottom: -2px;
-  background: none;
-  border-left: none;
-  border-right: none;
-  border-top: none;
-  border-radius: 0;
-  transition: opacity 0.15s, border-color 0.15s;
-}
-
-.tab-item:hover {
-  opacity: 0.8;
-}
-
-.tab-item.active {
-  opacity: 1;
-  border-bottom-color: var(--accent);
-}
-
-.copied-tooltip {
-  position: fixed;
-  bottom: 1.5rem;
-  left: 50%;
-  transform: translateX(-50%);
-  background-color: var(--accent);
-  color: #ffffff;
+  align-items: center;
+  gap: 0.5rem;
   padding: 0.5rem 1rem;
-  border-radius: 0.375rem;
+  border-radius: 9999px;
+  border: 1px solid var(--border);
   font-size: 0.875rem;
-  z-index: 9999;
-  animation: fadeInUp 0.2s ease;
+  cursor: pointer;
+  transition: all 0.15s;
+  background: var(--surface);
+  color: var(--text);
+  user-select: none;
 }
 
-@keyframes fadeInUp {
-  from { opacity: 0; transform: translateX(-50%) translateY(8px); }
-  to { opacity: 1; transform: translateX(-50%) translateY(0); }
+.toggle-pill.active {
+  background: var(--accent);
+  color: #fff;
+  border-color: var(--accent);
 }
+
+/* ── Animations ── */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slideUp {
+  from { opacity: 0; transform: translateX(-50%) translateY(10px); }
+  to   { opacity: 1; transform: translateX(-50%) translateY(0); }
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.3s ease;
+}
+
+.animate-slide-up {
+  animation: slideUp 0.25s ease;
+}
+
+/* ── Loader ── */
+.loader {
+  display: inline-block;
+  width: 16px;
+  height: 16px;
+  border: 2px solid var(--border);
+  border-top-color: var(--accent);
+  border-radius: 50%;
+  animation: spin 0.6s linear infinite;
+  flex-shrink: 0;
+}
+@keyframes spin { to { transform: rotate(360deg); } }

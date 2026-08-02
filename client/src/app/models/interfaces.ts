@@ -7,7 +7,7 @@ export interface Categoria {
 export interface Template {
   id: number;
   categoria_id: number;
-  idioma: 'es' | 'en';
+  idioma: string;
   tipo: 'email' | 'mensaje_empresa' | 'mensaje_recruiter';
   nombre: string;
   contenido: string;
@@ -25,16 +25,21 @@ export interface ConfigEntry {
 export interface Postulacion {
   id: number;
   empresa: string;
-  puesto_oferta: string;
+  oferta_laboral: string;
   categoria_id: number | null;
-  idioma: 'es' | 'en' | null;
-  nombre_reclutador: string;
-  puesto_reclutador: string;
+  idioma: string | null;
+  nombre_empleado: string;
+  puesto_empleado: string;
   template_ids: number[];
   valores_usados: Record<string, string>;
   resultado_email: string | null;
   resultado_empresa: string | null;
   resultado_recruiter: string | null;
+  notas: string;
+  estado: 'solicitado' | 'mensajeado' | 'en_proceso' | 'rechazado' | 'pendiente';
+  link_empresa: string;
+  contacto_empleado: string;
+  favorito: number;
   fecha: string;
   created_at: string;
 }
@@ -43,8 +48,8 @@ export const TIPOS_MENSAJE: Template['tipo'][] = ['email', 'mensaje_empresa', 'm
 
 export const TIPO_LABELS: Record<Template['tipo'], string> = {
   email: 'Email',
-  mensaje_empresa: 'Mensaje Empresa',
-  mensaje_recruiter: 'Mensaje Recruiter',
+  mensaje_empresa: 'Empresa',
+  mensaje_recruiter: 'Empleado',
 };
 
 export const TIPO_ICONS: Record<Template['tipo'], string> = {
@@ -55,16 +60,21 @@ export const TIPO_ICONS: Record<Template['tipo'], string> = {
 
 export interface PostulacionPayload {
   empresa: string;
-  puesto_oferta: string;
+  oferta_laboral: string;
   categoria_id: number | null;
   idioma: string | null;
-  nombre_reclutador: string;
-  puesto_reclutador: string;
+  nombre_empleado: string;
+  puesto_empleado: string;
   template_ids: number[];
   valores_usados: Record<string, string>;
   resultado_email: string | null;
   resultado_empresa: string | null;
   resultado_recruiter: string | null;
+  notas?: string;
+  estado?: string;
+  link_empresa?: string;
+  contacto_empleado?: string;
+  favorito?: number;
 }
 
 export interface GenerarPayload {
@@ -73,3 +83,32 @@ export interface GenerarPayload {
   categoria_id: number;
   idioma: string;
 }
+
+export type TabName = 'postular' | 'historial' | 'templates' | 'config';
+
+export interface EstadoOption {
+  value: string;
+  label: string;
+  color: string;
+}
+
+export interface Idioma {
+  id: number;
+  nombre: string;
+  created_at: string;
+}
+
+export interface Tag {
+  id: number;
+  nombre: string;
+  color: string;
+  created_at: string;
+}
+
+export const ESTADOS: EstadoOption[] = [
+  { value: 'solicitado', label: 'Solicitado', color: 'var(--surface-hover)' },
+  { value: 'mensajeado', label: 'Mensajeado', color: '#16a34a' },
+  { value: 'en_proceso', label: 'En proceso', color: '#2563eb' },
+  { value: 'rechazado', label: 'Rechazado', color: '#dc2626' },
+  { value: 'pendiente', label: 'Pendiente', color: '#d97706' },
+];

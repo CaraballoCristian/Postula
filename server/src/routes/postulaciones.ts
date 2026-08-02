@@ -45,45 +45,99 @@ router.get('/:id', (req: Request, res: Response) => {
 router.post('/', (req: Request, res: Response) => {
   const {
     empresa,
-    puesto_oferta,
+    oferta_laboral,
     categoria_id,
     idioma,
-    nombre_reclutador,
-    puesto_reclutador,
+    nombre_empleado,
+    puesto_empleado,
     template_ids,
     valores_usados,
     resultado_email,
     resultado_empresa,
     resultado_recruiter,
+    notas,
+    estado,
+    link_empresa,
+    contacto_empleado,
+    favorito,
   } = req.body;
 
-  if (!empresa) {
-    res.status(400).json({ error: 'El campo empresa es requerido' });
-    return;
-  }
-
   const stmt = db.prepare(`
-    INSERT INTO postulaciones (empresa, puesto_oferta, categoria_id, idioma, nombre_reclutador, puesto_reclutador,
-      template_ids, valores_usados, resultado_email, resultado_empresa, resultado_recruiter)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO postulaciones (empresa, oferta_laboral, categoria_id, idioma, nombre_empleado, puesto_empleado,
+      template_ids, valores_usados, resultado_email, resultado_empresa, resultado_recruiter,
+      notas, estado, link_empresa, contacto_empleado, favorito)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   const result = stmt.run(
-    empresa,
-    puesto_oferta || '',
+    empresa || '',
+    oferta_laboral || '',
     categoria_id || null,
     idioma || null,
-    nombre_reclutador || '',
-    puesto_reclutador || '',
+    nombre_empleado || '',
+    puesto_empleado || '',
     JSON.stringify(template_ids || []),
     JSON.stringify(valores_usados || {}),
     resultado_email || null,
     resultado_empresa || null,
     resultado_recruiter || null,
+    notas || '',
+    estado || 'solicitado',
+    link_empresa || '',
+    contacto_empleado || '',
+    favorito || 0,
   );
 
   const row = db.prepare('SELECT * FROM postulaciones WHERE id = ?').get(result.lastInsertRowid) as any;
   res.status(201).json({
+    ...row,
+    template_ids: JSON.parse(row.template_ids || '[]'),
+    valores_usados: JSON.parse(row.valores_usados || '{}'),
+  });
+});
+
+router.put('/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const existing = db.prepare('SELECT * FROM postulaciones WHERE id = ?').get(id);
+  if (!existing) { res.status(404).json({ error: 'Postulación no encontrada' }); return; }
+
+  const {
+    empresa, oferta_laboral, categoria_id, idioma,
+    nombre_empleado, puesto_empleado, estado,
+    notas, link_empresa, contacto_empleado, favorito,
+  } = req.body;
+
+  db.prepare(`
+    UPDATE postulaciones SET
+      empresa = COALESCE(?, empresa),
+      oferta_laboral = COALESCE(?, oferta_laboral),
+      categoria_id = COALESCE(?, categoria_id),
+      idioma = COALESCE(?, idioma),
+      nombre_empleado = COALESCE(?, nombre_empleado),
+      puesto_empleado = COALESCE(?, puesto_empleado),
+      estado = COALESCE(?, estado),
+      notas = COALESCE(?, notas),
+      link_empresa = COALESCE(?, link_empresa),
+      contacto_empleado = COALESCE(?, contacto_empleado),
+      favorito = COALESCE(?, favorito)
+    WHERE id = ?
+  `).run(
+    empresa !== undefined ? empresa : null,
+    oferta_laboral !== undefined ? oferta_laboral : null,
+    categoria_id !== undefined ? categoria_id : null,
+    idioma !== undefined ? idioma : null,
+    nombre_empleado !== undefined ? nombre_empleado : null,
+    puesto_empleado !== undefined ? puesto_empleado : null,
+    estado !== undefined ? estado : null,
+    notas !== undefined ? notas : null,
+    link_empresa !== undefined ? link_empresa : null,
+    contacto_empleado !== undefined ? contacto_empleado : null,
+    favorito !== undefined ? favorito : null,
+    id,
+  );
+
+  const row = db.prepare('SELECT * FROM postulaciones WHERE id = ?').get(id) as any;
+  res.json({
     ...row,
     template_ids: JSON.parse(row.template_ids || '[]'),
     valores_usados: JSON.parse(row.valores_usados || '{}'),
