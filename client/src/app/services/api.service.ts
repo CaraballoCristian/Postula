@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Categoria, Template, ConfigEntry, Postulacion, PostulacionPayload } from '../models/interfaces';
+import { Categoria, Template, ConfigEntry, Postulacion, PostulacionPayload, Idioma, Tag } from '../models/interfaces';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -16,8 +16,45 @@ export class ApiService {
   createCategoria(nombre: string): Observable<Categoria> {
     return this.http.post<Categoria>(`${this.base}/categorias`, { nombre });
   }
+  updateCategoria(id: number, nombre: string): Observable<Categoria> {
+    return this.http.put<Categoria>(`${this.base}/categorias/${id}`, { nombre });
+  }
+  setDefaultCategoria(id: number): Observable<any> {
+    return this.http.put(`${this.base}/categorias/${id}/default`, {});
+  }
   deleteCategoria(id: number): Observable<any> {
     return this.http.delete(`${this.base}/categorias/${id}`);
+  }
+
+  // ── Idiomas ──
+  getIdiomas(): Observable<Idioma[]> {
+    return this.http.get<Idioma[]>(`${this.base}/idiomas`);
+  }
+  createIdioma(nombre: string): Observable<Idioma> {
+    return this.http.post<Idioma>(`${this.base}/idiomas`, { nombre });
+  }
+  updateIdioma(id: number, nombre: string): Observable<Idioma> {
+    return this.http.put<Idioma>(`${this.base}/idiomas/${id}`, { nombre });
+  }
+  setDefaultIdioma(id: number): Observable<any> {
+    return this.http.put(`${this.base}/idiomas/${id}/default`, {});
+  }
+  deleteIdioma(id: number): Observable<any> {
+    return this.http.delete(`${this.base}/idiomas/${id}`);
+  }
+
+  // ── Tags ──
+  getTags(): Observable<Tag[]> {
+    return this.http.get<Tag[]>(`${this.base}/tags`);
+  }
+  createTag(nombre: string, color: string): Observable<Tag> {
+    return this.http.post<Tag>(`${this.base}/tags`, { nombre, color });
+  }
+  updateTag(id: number, data: { nombre?: string; color?: string; propagate?: boolean }): Observable<Tag> {
+    return this.http.put<Tag>(`${this.base}/tags/${id}`, data);
+  }
+  deleteTag(id: number, dest?: number): Observable<any> {
+    return this.http.delete(`${this.base}/tags/${id}`, dest !== undefined ? { body: { dest } } : {});
   }
 
   // ── Templates ──
@@ -34,9 +71,6 @@ export class ApiService {
   }
   updateTemplate(id: number, data: Partial<Template>): Observable<Template> {
     return this.http.put<Template>(`${this.base}/templates/${id}`, data);
-  }
-  reorderTemplate(id: number, new_orden: number): Observable<Template[]> {
-    return this.http.patch<Template[]>(`${this.base}/templates/${id}/reorder`, { new_orden });
   }
   deleteTemplate(id: number): Observable<any> {
     return this.http.delete(`${this.base}/templates/${id}`);
@@ -64,6 +98,9 @@ export class ApiService {
   }
   createPostulacion(data: PostulacionPayload): Observable<Postulacion> {
     return this.http.post<Postulacion>(`${this.base}/postulaciones`, data);
+  }
+  updatePostulacion(id: number, data: Partial<PostulacionPayload>): Observable<Postulacion> {
+    return this.http.put<Postulacion>(`${this.base}/postulaciones/${id}`, data);
   }
   deletePostulacion(id: number): Observable<any> {
     return this.http.delete(`${this.base}/postulaciones/${id}`);

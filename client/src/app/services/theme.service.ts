@@ -3,7 +3,7 @@ import { Injectable, signal, effect } from '@angular/core';
 @Injectable({ providedIn: 'root' })
 export class ThemeService {
   accentColor = signal('#2563eb');
-  isDark = signal(false);
+  isDark = signal(true);
 
   constructor() {
     const savedAccent = localStorage.getItem('accent-color');

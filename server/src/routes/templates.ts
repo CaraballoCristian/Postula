@@ -21,7 +21,7 @@ router.get('/', (req: Request, res: Response) => {
     params.push(tipo);
   }
 
-  sql += ' ORDER BY orden ASC';
+  sql += ' ORDER BY created_at DESC';
   const rows = db.prepare(sql).all(...params);
   res.json(rows);
 });
@@ -42,16 +42,10 @@ router.post('/', (req: Request, res: Response) => {
     return;
   }
 
-  const maxOrden = db.prepare(
-    'SELECT COALESCE(MAX(orden), 0) as max_orden FROM templates WHERE categoria_id = ? AND idioma = ? AND tipo = ?'
-  ).get(categoria_id, idioma, tipo) as { max_orden: number };
-
-  const newOrden = maxOrden.max_orden + 1;
-
   const stmt = db.prepare(
-    'INSERT INTO templates (categoria_id, idioma, tipo, nombre, contenido, orden) VALUES (?, ?, ?, ?, ?, ?)'
+    'INSERT INTO templates (categoria_id, idioma, tipo, nombre, contenido) VALUES (?, ?, ?, ?, ?)'
   );
-  const result = stmt.run(categoria_id, idioma, tipo, nombre.trim(), contenido, newOrden);
+  const result = stmt.run(categoria_id, idioma, tipo, nombre.trim(), contenido);
   const row = db.prepare('SELECT * FROM templates WHERE id = ?').get(result.lastInsertRowid);
   res.status(201).json(row);
 });
@@ -79,50 +73,6 @@ router.put('/:id', (req: Request, res: Response) => {
 
   const row = db.prepare('SELECT * FROM templates WHERE id = ?').get(id);
   res.json(row);
-});
-
-router.patch('/:id/reorder', (req: Request, res: Response) => {
-  const { id } = req.params;
-  const { new_orden } = req.body;
-
-  if (typeof new_orden !== 'number') {
-    res.status(400).json({ error: 'new_orden (number) es requerido' });
-    return;
-  }
-
-  const target = db.prepare('SELECT * FROM templates WHERE id = ?').get(id) as any;
-  if (!target) {
-    res.status(404).json({ error: 'Template no encontrado' });
-    return;
-  }
-
-  const group = db.prepare(
-    'SELECT * FROM templates WHERE categoria_id = ? AND idioma = ? AND tipo = ? ORDER BY orden ASC'
-  ).all(target.categoria_id, target.idioma, target.tipo) as any[];
-
-  const currentIndex = group.findIndex((t: any) => t.id === Number(id));
-  if (currentIndex === -1) {
-    res.status(500).json({ error: 'Error interno' });
-    return;
-  }
-
-  const [moved] = group.splice(currentIndex, 1);
-  const clampedIndex = Math.max(0, Math.min(new_orden, group.length));
-  group.splice(clampedIndex, 0, moved);
-
-  const updateStmt = db.prepare('UPDATE templates SET orden = ? WHERE id = ?');
-  const reorder = db.transaction(() => {
-    group.forEach((t: any, i: number) => {
-      updateStmt.run(i + 1, t.id);
-    });
-  });
-  reorder();
-
-  const rows = db.prepare(
-    'SELECT * FROM templates WHERE categoria_id = ? AND idioma = ? AND tipo = ? ORDER BY orden ASC'
-  ).all(target.categoria_id, target.idioma, target.tipo);
-
-  res.json(rows);
 });
 
 router.delete('/:id', (req: Request, res: Response) => {

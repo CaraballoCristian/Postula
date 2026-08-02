@@ -28,6 +28,30 @@ router.post('/', (req: Request, res: Response) => {
   }
 });
 
+router.put('/:id/default', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const existing = db.prepare('SELECT * FROM categorias WHERE id = ?').get(id);
+  if (!existing) { res.status(404).json({ error: 'Categoría no encontrada' }); return; }
+  db.prepare("INSERT OR REPLACE INTO config (clave, valor) VALUES ('default_categoria_id', ?)").run(id);
+  res.json({ ok: true });
+});
+
+router.put('/:id', (req: Request, res: Response) => {
+  const { id } = req.params;
+  const { nombre } = req.body;
+  if (!nombre || !nombre.trim()) { res.status(400).json({ error: 'El nombre es requerido' }); return; }
+  const existing = db.prepare('SELECT * FROM categorias WHERE id = ?').get(id);
+  if (!existing) { res.status(404).json({ error: 'Categoría no encontrada' }); return; }
+  try {
+    db.prepare('UPDATE categorias SET nombre = ? WHERE id = ?').run(nombre.trim(), id);
+    const row = db.prepare('SELECT * FROM categorias WHERE id = ?').get(id);
+    res.json(row);
+  } catch (e: any) {
+    if (e.message?.includes('UNIQUE')) { res.status(409).json({ error: 'Ya existe una categoría con ese nombre' }); return; }
+    res.status(500).json({ error: 'Error al actualizar categoría' });
+  }
+});
+
 router.delete('/:id', (req: Request, res: Response) => {
   const { id } = req.params;
   const stmt = db.prepare('DELETE FROM categorias WHERE id = ?');
