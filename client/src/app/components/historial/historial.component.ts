@@ -5,6 +5,7 @@ import { ClipboardService } from '../../services/clipboard.service';
 import { DialogService } from '../../services/dialog.service';
 import { SharedStateService } from '../../services/shared-state.service';
 import { Postulacion, Categoria, ESTADOS, Tag } from '../../models/interfaces';
+import { I18nService } from '../../services/i18n.service';
 
 type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_laboral' | 'nombre_empleado' | 'puesto_empleado' | 'favorito' | 'estado';
 
@@ -18,14 +19,14 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
       <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
         
       <div class="relative sm:w-4/12">
-          <input [ngModel]="filtroGlobal()" (ngModelChange)="filtroGlobal.set($event)" placeholder="Buscar..." class="text-sm w-full pr-7" />
+          <input [ngModel]="filtroGlobal()" (ngModelChange)="filtroGlobal.set($event)" [placeholder]="i18n.t('hist.buscar')" class="text-sm w-full pr-7" />
           @if (filtroGlobal()) {
-            <button class="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full text-xs border-0 cursor-pointer bg-transparent" style="opacity: 0.4; color: var(--text);" (click)="filtroGlobal.set('')" title="Limpiar">×</button>
+            <button class="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full text-xs border-0 cursor-pointer bg-transparent" style="opacity: 0.4; color: var(--text);" (click)="filtroGlobal.set('')" [title]="i18n.t('hist.limpiar')">×</button>
           }
         </div>
-        <div class="relative sm:w-3/12">
+        <div class="relative w-3/12">
           <button class="text-sm flex items-center justify-between pl-2 pr-1 py-2 rounded-md cursor-pointer border w-full" style="border-color: var(--border); background: var(--surface); color: var(--text);" (click)="toggleDropdown('cat'); $event.stopPropagation()">
-            <span>{{ catLabel() }}</span>
+            <span>{{ i18n.t('hist.categorias') }}</span>
             <span>▾</span>
           </button>
           @if (openDropdown() === 'cat') {
@@ -33,15 +34,15 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
               @for (c of categorias; track c.id) {
                 <label class="flex items-center gap-2.5 px-2.5 py-1.5 rounded cursor-pointer text-sm" [style.background]="checkedCategorias().has(c.id) ? 'var(--surface-hover)' : 'transparent'">
                   <input type="checkbox" [checked]="checkedCategorias().has(c.id)" (change)="toggleCategoria(c.id)" class="w-3.5 h-3.5" style="accent-color: var(--accent);" />
-                  {{ c.nombre }}
+                  {{ i18n.categoriaLabel(c.nombre) }}
                 </label>
               }
             </div>
           }
         </div>
-        <div class="relative sm:w-3/12">
+        <div class="relative w-3/12">
           <button class="text-sm flex items-center justify-between pl-2 pr-1 py-2 rounded-md cursor-pointer border w-full" style="border-color: var(--border); background: var(--surface); color: var(--text);" (click)="toggleDropdown('est'); $event.stopPropagation()">
-            <span>{{ estLabel() }}</span>
+            <span>{{ i18n.t('hist.estados') }}</span>
             <span>▾</span>
           </button>
           @if (openDropdown() === 'est') {
@@ -49,15 +50,15 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
               @for (e of estados; track e.value) {
                 <label class="flex items-center gap-2.5 px-2.5 py-1.5 rounded cursor-pointer text-sm" [style.background]="checkedEstados().has(e.value) ? 'var(--surface-hover)' : 'transparent'">
                   <input type="checkbox" [checked]="checkedEstados().has(e.value)" (change)="toggleEstado(e.value)" class="w-3.5 h-3.5" style="accent-color: var(--accent);" />
-                  {{ e.label }}
+                  {{ estadoLabel(e.value) }}
                 </label>
               }
             </div>
           }
         </div>
-        <div class="relative sm:w-2/12">
+        <div class="relative w-2/12">
             <button class="text-sm flex items-center justify-between pl-2 pr-1 py-2 rounded-md cursor-pointer border w-full" style="border-color: var(--border); background: var(--surface); color: var(--text);" (click)="toggleDropdown('idioma'); $event.stopPropagation()">
-              <span>{{ idiomaLabel() }}</span>
+              <span>{{ i18n.t('hist.idiomas') }}</span>
               <span>▾</span>
             </button>
             @if (openDropdown() === 'idioma') {
@@ -76,33 +77,33 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
 
       <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
         <label class="toggle-pill" [class.active]="selectionMode()" (click)="toggleSelectionMode()">
-          Selección múltiple
+          {{ i18n.t('hist.seleccionMultiple') }}
         </label>
 
         @if (selectionMode()) {
           <div class="hidden sm:flex gap-2 sm:gap-3 items-center">
-            <button class="toggle-pill" (click)="selectAll()">Seleccionar todo</button>
+            <button class="toggle-pill" (click)="selectAll()">{{ i18n.t('hist.seleccionarTodo') }}</button>
             <select [(ngModel)]="bulkEstado" class="text-sm sm:w-auto">
-              @for (e of estados; track e.value) { @if (e.value !== '__otras__') { <option [value]="e.value">{{ e.label }}</option> } }
+              @for (e of estados; track e.value) { @if (e.value !== '__otras__') { <option [value]="e.value">{{ estadoLabel(e.value) }}</option> } }
             </select>
             @if (selectedIds().size > 0) {
-              <button class="btn btn-md h-full" style="background: #dc2626; color: #fff;" (click)="applyBulk()">Aplicar a {{ selectedIds().size }}</button>
+              <button class="btn btn-md h-full" style="background: #dc2626; color: #fff;" (click)="applyBulk()">{{ i18n.t('hist.aplicarA', { count: selectedIds().size }) }}</button>
             }
           </div>
         }
 
-        <span class="text-xs ml-auto" style="opacity: 0.4;">{{ filteredCount() }} resultado{{ filteredCount() !== 1 ? 's' : '' }}</span>
+        <span class="text-xs ml-auto" style="opacity: 0.4;">{{ i18n.t('hist.resultado', { count: filteredCount() }) }}</span>
 
         @if (selectionMode()) {
           <div class="flex sm:hidden flex-col gap-2 w-full">
             <div class="flex gap-2">
-              <button class="toggle-pill" (click)="selectAll()">Seleccionar todo</button>
+              <button class="toggle-pill" (click)="selectAll()">{{ i18n.t('hist.seleccionarTodo') }}</button>
               <select [(ngModel)]="bulkEstado" class="text-sm flex-1">
-                @for (e of estados; track e.value) { @if (e.value !== '__otras__') { <option [value]="e.value">{{ e.label }}</option> } }
+                @for (e of estados; track e.value) { @if (e.value !== '__otras__') { <option [value]="e.value">{{ estadoLabel(e.value) }}</option> } }
               </select>
             </div>
             @if (selectedIds().size > 0) {
-              <button class="btn btn-sm py-2" style="background: #dc2626; color: #fff; flex: 1;" (click)="applyBulk()">Aplicar a {{ selectedIds().size }}</button>
+              <button class="btn btn-sm py-2" style="background: #dc2626; color: #fff; flex: 1;" (click)="applyBulk()">{{ i18n.t('hist.aplicarA', { count: selectedIds().size }) }}</button>
             }
           </div>
         }
@@ -112,10 +113,10 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
 
     @if (loading()) {
       <div class="card text-center py-12 flex items-center justify-center gap-2" style="opacity: 0.5;">
-        <span class="loader"></span> Cargando...
+        <span class="loader"></span> {{ i18n.t('common.loading') }}
       </div>
     } @else if (postulaciones().length === 0) {
-      <div class="card text-center py-12" style="opacity: 0.35;">No hay postulaciones todavía.</div>
+      <div class="card text-center py-12" style="opacity: 0.35;">{{ i18n.t('hist.sinPostulaciones') }}</div>
     } @else {
       <div class="card" style="padding: 0;">
         <div class="overflow-x-auto">
@@ -125,7 +126,7 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
                 @if (selectionMode()) { <th class="px-3 py-2.5 w-8"></th> }
                 @for (col of columns; track col.field) {
                   <th class="text-left px-3 py-2.5 font-medium cursor-pointer select-none text-xs" style="opacity: 0.5; border-left: 1px solid var(--border);" (click)="toggleSort(col.field)">
-                    <span class="inline-flex items-center gap-1">{{col.label }} @if (sortField() === col.field) { <span class="text-[10px]">{{ sortDir() === 'asc' ? '▲' : '▼' }}</span> }</span>
+                    <span class="inline-flex items-center gap-1">{{ i18n.t(col.labelKey) }} @if (sortField() === col.field) { <span class="text-[10px]">{{ sortDir() === 'asc' ? '▲' : '▼' }}</span> }</span>
                   </th>
                 }
                 <th class="px-3 py-2.5" style="border-left: 1px solid var(--border);"></th>
@@ -139,14 +140,14 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
                       <input type="checkbox" [checked]="selectedIds().has(p.id)" (change)="toggleSelect(p.id)" class="w-3.5 h-3.5" style="accent-color: var(--accent);" />
                     </td>
                   }
-                  <td class="px-3 py-2.5 text-center" (click)="toggleFav(p); $event.stopPropagation()" title="Favorito">
+                  <td class="px-3 py-2.5 text-center" (click)="toggleFav(p); $event.stopPropagation()" [title]="i18n.t('hist.titFavorito')">
                     <span class="cursor-pointer select-none">{{ p.favorito ? '⭐' : '☆' }}</span>
                   </td>
                   <td class="px-3 py-2.5 text-xs" style="opacity: 0.45; white-space: nowrap; border-left: 1px solid var(--border);">{{ formatFecha(p.fecha) }}</td>
                   <td class="px-3 py-2.5 font-medium" style="white-space: nowrap; border-left: 1px solid var(--border);">
                     <span style="display: inline-block; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: text-bottom;">{{ p.empresa }}</span>
                     @if (p.link_empresa) {
-                      <a [href]="fixUrl(p.link_empresa)" target="_blank" rel="noopener" class="ml-1 no-underline" style="color: var(--accent);" title="Abrir link">↗</a>
+                      <a [href]="fixUrl(p.link_empresa)" target="_blank" rel="noopener" class="ml-1 no-underline" style="color: var(--accent);" [title]="i18n.t('hist.abrirLink')">↗</a>
                     }
                   </td>
                   <td class="px-3 py-2.5" style="border-left: 1px solid var(--border);">
@@ -157,7 +158,7 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
                   <td class="px-3 py-2.5" style="white-space: nowrap; border-left: 1px solid var(--border);">
                     <span style="display: inline-block; max-width: 85px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: text-bottom;">{{ p.nombre_empleado }}</span>
                     @if (p.contacto_empleado) {
-                      <a [href]="fixUrl(p.contacto_empleado)" target="_blank" rel="noopener" class="ml-1 no-underline" style="color: var(--accent);" title="Abrir link">↗</a>
+                      <a [href]="fixUrl(p.contacto_empleado)" target="_blank" rel="noopener" class="ml-1 no-underline" style="color: var(--accent);" [title]="i18n.t('hist.abrirLink')">↗</a>
                     }
                   </td>
                   <td class="px-3 py-2.5" style="white-space: nowrap; border-left: 1px solid var(--border);"><span style="display: inline-block; max-width: 75px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: text-bottom;">{{ p.puesto_empleado }}</span></td>
@@ -166,9 +167,9 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
                   </td>
                   <td class="px-3 py-2.5 text-right" style="border-left: 1px solid var(--border);">
                     <div class="flex gap-1 justify-end">
-                      <button class="btn btn-ghost btn-sm" (click)="viewPost(p.id)" title="Ver mensajes">👁</button>
-                      <button class="btn btn-ghost btn-sm" (click)="editPost(p)" title="Editar">✏️</button>
-                      <button class="btn btn-ghost btn-sm" (click)="deletePost(p.id)" title="Eliminar">🗑️</button>
+                      <button class="btn btn-ghost btn-sm" (click)="viewPost(p.id)" [title]="i18n.t('hist.verMensajes')">👁</button>
+                      <button class="btn btn-ghost btn-sm" (click)="editPost(p)" [title]="i18n.t('common.edit')">✏️</button>
+                      <button class="btn btn-ghost btn-sm" (click)="deletePost(p.id)" [title]="i18n.t('common.delete')">🗑️</button>
                     </div>
                   </td>
                 </tr>
@@ -189,9 +190,9 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
                           @if (tipo === 'email' && p.resultado_email) {
                             <div class="animate-fade-in" style="border: 1px solid var(--border); border-radius: 0.375rem; overflow: hidden;">
                               <div class="flex items-center gap-3 px-3 py-2 cursor-pointer text-xs" [style.background-color]="expandedMsg() === 'email' ? 'var(--surface-hover)' : 'transparent'" (click)="toggleMsg('email')">
-                                <span class="flex-1 font-medium">✉ Email</span>
+                                <span class="flex-1 font-medium">✉ {{ i18n.t('hist.expEmail') }}</span>
                                 <span style="opacity: 0.4;">{{ expandedMsg() === 'email' ? '▲' : '▼' }}</span>
-                                <button class="btn btn-ghost btn-sm text-xs" (click)="copyMsg(p.resultado_email!)" title="Copiar">📋</button>
+                                <button class="btn btn-ghost btn-sm text-xs" (click)="copyMsg(p.resultado_email!)" [title]="i18n.t('hist.copy')">📋</button>
                               </div>
                               @if (expandedMsg() === 'email') {
                                 <div style="border-top: 1px solid var(--border);"><pre class="text-xs whitespace-pre-wrap font-sans leading-relaxed px-3 py-2" style="margin: 0;">{{ p.resultado_email }}</pre></div>
@@ -201,9 +202,9 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
                           @if (tipo === 'mensaje_empresa' && p.resultado_empresa) {
                             <div class="animate-fade-in" style="border: 1px solid var(--border); border-radius: 0.375rem; overflow: hidden;">
                               <div class="flex items-center gap-3 px-3 py-2 cursor-pointer text-xs" [style.background-color]="expandedMsg() === 'mensaje_empresa' ? 'var(--surface-hover)' : 'transparent'" (click)="toggleMsg('mensaje_empresa')">
-                                <span class="flex-1 font-medium">🏢 Mensaje Empresa</span>
+                                <span class="flex-1 font-medium">🏢 {{ i18n.t('hist.expEmpresa') }}</span>
                                 <span style="opacity: 0.4;">{{ expandedMsg() === 'mensaje_empresa' ? '▲' : '▼' }}</span>
-                                <button class="btn btn-ghost btn-sm text-xs" (click)="copyMsg(p.resultado_empresa!)" title="Copiar">📋</button>
+                                <button class="btn btn-ghost btn-sm text-xs" (click)="copyMsg(p.resultado_empresa!)" [title]="i18n.t('hist.copy')">📋</button>
                               </div>
                               @if (expandedMsg() === 'mensaje_empresa') {
                                 <div style="border-top: 1px solid var(--border);"><pre class="text-xs whitespace-pre-wrap font-sans leading-relaxed px-3 py-2" style="margin: 0;">{{ p.resultado_empresa }}</pre></div>
@@ -213,9 +214,9 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
                           @if (tipo === 'mensaje_recruiter' && p.resultado_recruiter) {
                             <div class="animate-fade-in" style="border: 1px solid var(--border); border-radius: 0.375rem; overflow: hidden;">
                               <div class="flex items-center gap-3 px-3 py-2 cursor-pointer text-xs" [style.background-color]="expandedMsg() === 'mensaje_recruiter' ? 'var(--surface-hover)' : 'transparent'" (click)="toggleMsg('mensaje_recruiter')">
-                                <span class="flex-1 font-medium">👤 Mensaje Recruiter</span>
+                                <span class="flex-1 font-medium">👤 {{ i18n.t('hist.expRecruiter') }}</span>
                                 <span style="opacity: 0.4;">{{ expandedMsg() === 'mensaje_recruiter' ? '▲' : '▼' }}</span>
-                                <button class="btn btn-ghost btn-sm text-xs" (click)="copyMsg(p.resultado_recruiter!)" title="Copiar">📋</button>
+                                <button class="btn btn-ghost btn-sm text-xs" (click)="copyMsg(p.resultado_recruiter!)" [title]="i18n.t('hist.copy')">📋</button>
                               </div>
                               @if (expandedMsg() === 'mensaje_recruiter') {
                                 <div style="border-top: 1px solid var(--border);"><pre class="text-xs whitespace-pre-wrap font-sans leading-relaxed px-3 py-2" style="margin: 0;">{{ p.resultado_recruiter }}</pre></div>
@@ -236,26 +237,26 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
 
     <!-- EDIT MODAL -->
     @if (editModal()) {
-      <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[10vh]" style="background: rgba(0,0,0,0.3);" (click)="closeEditModal()">
+      <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[10vh]" style="background: rgba(0,0,0,0.3);">
         <div class="card w-full max-w-lg mx-4 animate-fade-in" (click)="$event.stopPropagation()">
-          <h3 class="text-base font-semibold mb-4">Editar Postulación</h3>
+          <h3 class="text-base font-semibold mb-4">{{ i18n.t('hist.editTitle') }}</h3>
           <div class="grid grid-cols-2 gap-3">
-            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">Empresa</label><input [(ngModel)]="editForm.empresa" class="text-sm" /></div>
-            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">Oferta</label><input [(ngModel)]="editForm.oferta_laboral" class="text-sm" /></div>
-            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">Reclutador</label><input [(ngModel)]="editForm.nombre_empleado" class="text-sm" /></div>
-            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">Puesto recl.</label><input [(ngModel)]="editForm.puesto_empleado" class="text-sm" /></div>
-            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">Estado</label>
+            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('hist.field.empresa') }}</label><input [(ngModel)]="editForm.empresa" class="text-sm" /></div>
+            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('hist.field.oferta') }}</label><input [(ngModel)]="editForm.oferta_laboral" class="text-sm" /></div>
+            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('hist.field.reclutador') }}</label><input [(ngModel)]="editForm.nombre_empleado" class="text-sm" /></div>
+            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('hist.field.puestoRecl') }}</label><input [(ngModel)]="editForm.puesto_empleado" class="text-sm" /></div>
+            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('hist.field.estado') }}</label>
               <select [(ngModel)]="editForm.estado" class="text-sm">
-                @for (e of estados; track e.value) { @if (e.value !== '__otras__') { <option [value]="e.value">{{ e.label }}</option> } }
+                @for (e of estados; track e.value) { @if (e.value !== '__otras__') { <option [value]="e.value">{{ estadoLabel(e.value) }}</option> } }
               </select>
             </div>
-            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">Link empresa</label><input [(ngModel)]="editForm.link_empresa" class="text-sm" placeholder="https://..." /></div>
-            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">Contacto empleado</label><input [(ngModel)]="editForm.contacto_empleado" class="text-sm" placeholder="https://linkedin.com/..." /></div>
-            <div class="col-span-2"><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">Notas</label><textarea [(ngModel)]="editForm.notas" rows="3" class="text-sm" placeholder="Notas"></textarea></div>
+            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('hist.field.linkEmpresa') }}</label><input [(ngModel)]="editForm.link_empresa" class="text-sm" placeholder="https://..." /></div>
+            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('hist.field.contactoEmpleado') }}</label><input [(ngModel)]="editForm.contacto_empleado" class="text-sm" placeholder="https://linkedin.com/..." /></div>
+            <div class="col-span-2"><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('hist.field.notas') }}</label><textarea [(ngModel)]="editForm.notas" rows="3" class="text-sm" placeholder="Notas"></textarea></div>
           </div>
           <div class="flex justify-end gap-2 mt-5">
-            <button class="btn btn-outline" (click)="closeEditModal()">Cancelar</button>
-            <button class="btn btn-primary" (click)="saveEdit()">Guardar</button>
+            <button class="btn btn-outline" (click)="closeEditModal()">{{ i18n.t('common.cancel') }}</button>
+            <button class="btn btn-primary" (click)="saveEdit()">{{ i18n.t('common.save') }}</button>
           </div>
         </div>
       </div>
@@ -287,16 +288,16 @@ export class HistorialComponent implements OnInit {
   selectedIds = signal<Set<number>>(new Set());
   bulkEstado = 'solicitado';
 
-  columns: { field: SortField; label: string }[] = [
-    { field: 'favorito',      label: '' },
-    { field: 'fecha',          label: 'Fecha' },
-    { field: 'empresa',        label: 'Empresa' },
-    { field: 'categoria_id',   label: 'Categoría' },
-    { field: 'idioma',          label: 'Idioma' },
-    { field: 'oferta_laboral', label: 'Oferta' },
-    { field: 'nombre_empleado', label: 'Empleado' },
-    { field: 'puesto_empleado', label: 'Puesto' },
-    { field: 'estado',         label: 'Estado' },
+  columns: { field: SortField; labelKey: any }[] = [
+    { field: 'favorito',      labelKey: '' },
+    { field: 'fecha',          labelKey: 'hist.col.fecha' },
+    { field: 'empresa',        labelKey: 'hist.col.empresa' },
+    { field: 'categoria_id',   labelKey: 'hist.col.categoria' },
+    { field: 'idioma',          labelKey: 'hist.col.idioma' },
+    { field: 'oferta_laboral', labelKey: 'hist.col.oferta' },
+    { field: 'nombre_empleado', labelKey: 'hist.col.empleado' },
+    { field: 'puesto_empleado', labelKey: 'hist.col.puesto' },
+    { field: 'estado',         labelKey: 'hist.col.estado' },
   ];
 
   private catNombres: Record<number, string> = {};
@@ -310,6 +311,7 @@ export class HistorialComponent implements OnInit {
     public clipboard: ClipboardService,
     private dialog: DialogService,
     private shared: SharedStateService,
+    public i18n: I18nService,
   ) {
     effect(() => { void shared.historialRefresh(); if (this.inited) this.load(); });
     effect(() => { void shared.tagsRefresh(); if (this.inited) this.loadTags(); });
@@ -321,14 +323,34 @@ export class HistorialComponent implements OnInit {
         this.loaded.set(true);
       }
     });
+    effect(() => this.persistFilters());
     document.addEventListener('click', () => this.openDropdown.set(null));
+  }
+
+  private persistFilters() {
+    const data = {
+      cat: [...this.checkedCategorias()],
+      est: [...this.checkedEstados()],
+      idioma: [...this.checkedIdiomas()],
+    };
+    localStorage.setItem('postulatool.hist.filters', JSON.stringify(data));
+  }
+
+  private restoreFilters() {
+    try {
+      const raw = localStorage.getItem('postulatool.hist.filters');
+      if (!raw) return;
+      const data = JSON.parse(raw);
+      if (Array.isArray(data.cat)) this.checkedCategorias.set(new Set(data.cat));
+      if (Array.isArray(data.est)) this.checkedEstados.set(new Set(data.est));
+      if (Array.isArray(data.idioma)) this.checkedIdiomas.set(new Set(data.idioma));
+    } catch { /* ignore */ }
   }
 
   ngOnInit() {}
 
-  cap(s: string) { return s.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()); }
-
   initData() {
+    this.restoreFilters();
     this.loading.set(true);
     let done = 0;
     const checkDone = () => { if (++done >= 4) this.loading.set(false); };
@@ -380,11 +402,11 @@ export class HistorialComponent implements OnInit {
     this.api.getTags().subscribe(d => {
       const oldChecked = new Set(this.checkedEstados());
       const oldNames = new Set(this.estados.map(e => e.value));
-      this.estados = d.map(t => ({ value: t.nombre, label: this.cap(t.nombre), color: t.color }));
+      this.estados = d.map(t => ({ value: t.nombre, label: this.i18n.tagLabel(t.nombre), color: t.color }));
       if (d.length === 0) {
         for (const e of ESTADOS) this.estados.push({ value: e.value, label: e.label, color: e.color });
       }
-      this.estados.push({ value: this.OTRAS, label: 'Sin etiqueta', color: 'var(--surface-hover)' });
+      this.estados.push({ value: this.OTRAS, label: this.i18n.t('hist.sinEtiqueta'), color: 'var(--surface-hover)' });
       const newNames = this.estados.map(e => e.value);
       let next: Set<string>;
       if (oldChecked.size === 0) {
@@ -400,8 +422,8 @@ export class HistorialComponent implements OnInit {
     });
   }
 
-  catNombre(id: number) { return this.catNombres[id] || ''; }
-  estadoLabel(v: string) { return this.estados.find(e => e.value === v)?.label || 'Sin etiqueta'; }
+  catNombre(id: number) { return this.catNombres[id] ? this.i18n.categoriaLabel(this.catNombres[id]) : ''; }
+  estadoLabel(v: string) { return v === this.OTRAS ? this.i18n.t('hist.sinEtiqueta') : this.i18n.tagLabel(v); }
   estadoColor(v: string) { return this.estados.find(e => e.value === v)?.color || 'var(--surface-hover)'; }
 
   toggleDropdown(type: 'cat' | 'est' | 'idioma') {
@@ -419,10 +441,6 @@ export class HistorialComponent implements OnInit {
   toggleIdioma(nombre: string) {
     this.checkedIdiomas.update(s => { const n = new Set(s); if (n.has(nombre)) n.delete(nombre); else n.add(nombre); return n; });
   }
-
-  catLabel(): string { return 'Categorías'; }
-  estLabel(): string { return 'Estados'; }
-  idiomaLabel(): string { return 'Idiomas'; }
 
   filteredCount = computed(() => this.filteredSorted().length);
 
@@ -520,7 +538,7 @@ export class HistorialComponent implements OnInit {
     const count = this.selectedIds().size;
     if (count === 0) return;
     const estadoLabel = this.estadoLabel(this.bulkEstado);
-    const ok = await this.dialog.confirm(`¿Cambiar estado de ${count} postulaciones a "${estadoLabel}"?`);
+    const ok = await this.dialog.confirm(this.i18n.t('hist.bulkConfirm', { count, estado: estadoLabel }));
     if (!ok) return;
 
     const ids = [...this.selectedIds()];
@@ -530,7 +548,7 @@ export class HistorialComponent implements OnInit {
         this.api.updatePostulacion(id, { estado: this.bulkEstado } as any).subscribe({ next: () => { done++; resolve(); }, error: () => resolve() });
       });
     }
-    this.dialog.toast(`${done} postulaciones actualizadas`);
+    this.dialog.toast(this.i18n.t('hist.bulkDone', { count: done }));
     this.selectedIds.set(new Set());
     this.selectionMode.set(false);
     this.load();
@@ -538,7 +556,7 @@ export class HistorialComponent implements OnInit {
 
   // ── Single edit ──
   async deletePost(id: number) {
-    const ok = await this.dialog.confirm('¿Eliminar esta postulación?');
+    const ok = await this.dialog.confirm(this.i18n.t('hist.deleteConfirm'));
     if (!ok) return;
     this.api.deletePostulacion(id).subscribe(() => { this.expandedId.set(null); this.load(); });
   }
