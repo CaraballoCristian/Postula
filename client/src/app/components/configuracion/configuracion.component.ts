@@ -1,9 +1,10 @@
-import { Component, OnInit, signal, effect } from '@angular/core';
+import { Component, OnInit, signal, effect, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
 import { DialogService } from '../../services/dialog.service';
 import { SharedStateService } from '../../services/shared-state.service';
 import { ConfigEntry, Categoria, Idioma, Tag } from '../../models/interfaces';
+import { I18nService } from '../../services/i18n.service';
 
 type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags';
 
@@ -19,7 +20,7 @@ type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags';
             [style.color]="activeSection() === s.id ? 'var(--accent)' : ''"
             [style.opacity]="activeSection() === s.id ? '1' : '0.55'"
             (click)="activeSection.set(s.id)">
-            {{ s.label }}
+            {{ i18n.t(s.labelKey) }}
             @if (activeSection() === s.id) {
               <span class="absolute bottom-0 left-0 right-0 h-0.5 rounded-full" style="background-color: var(--accent);"></span>
             }
@@ -31,19 +32,19 @@ type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags';
       @if (activeSection() === 'datos') {
         <div>
           <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-            <p class="text-sm" style="opacity: 0.55;">Estos valores se rellenan automáticamente al generar mensajes.</p>
-            <button class="btn btn-primary w-full sm:w-auto" (click)="openDatosModal()">+ Nueva variable</button>
+            <p class="text-sm" style="opacity: 0.55;">{{ i18n.t('cfg.intro') }}</p>
+            <button class="btn btn-primary w-full sm:w-auto" (click)="openDatosModal()">{{ i18n.t('cfg.nuevaVariable') }}</button>
           </div>
           @if (loading()) {
-            <div class="card text-center py-12 flex items-center justify-center gap-2" style="opacity: 0.5;"><span class="loader"></span> Cargando...</div>
+            <div class="card text-center py-12 flex items-center justify-center gap-2" style="opacity: 0.5;"><span class="loader"></span> {{ i18n.t('common.loading') }}</div>
           } @else {
             @for (e of entries(); track e.id) {
               <div class="card flex items-center gap-3">
                 <span class="text-sm font-mono shrink-0" style="min-width: 120px;">{{ e.clave }}</span>
                 <span class="text-sm flex-1 truncate" style="opacity: 0.6;">{{ e.valor || '—' }}</span>
-                <span class="text-xs shrink-0" style="opacity: 0.35; white-space: nowrap;">{{ refCount(e.clave) }} refs</span>
-                <button class="btn btn-ghost btn-sm" (click)="openDatosModal(e)" title="Editar">✏️</button>
-                <button class="btn btn-ghost btn-sm" (click)="removeDato(e.id)" title="Eliminar">🗑️</button>
+                <span class="text-xs shrink-0" style="opacity: 0.35; white-space: nowrap;">{{ refCount(e.clave) }} {{ i18n.t('cfg.refs') }}</span>
+                <button class="btn btn-ghost btn-sm" (click)="openDatosModal(e)" [title]="i18n.t('common.edit')">✏️</button>
+                <button class="btn btn-ghost btn-sm" (click)="removeDato(e.id)" [title]="i18n.t('common.delete')">🗑️</button>
               </div>
             }
           }
@@ -54,18 +55,18 @@ type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags';
       @if (activeSection() === 'categorias') {
         <div>
           <div class="flex justify-end mb-4">
-            <button class="btn btn-primary w-full sm:w-auto" (click)="openCatModal()">+ Nueva categoría</button>
+            <button class="btn btn-primary w-full sm:w-auto" (click)="openCatModal()">{{ i18n.t('cfg.nuevaCategoria') }}</button>
           </div>
           @if (loading()) {
-            <div class="card text-center py-12 flex items-center justify-center gap-2" style="opacity: 0.5;"><span class="loader"></span> Cargando...</div>
+            <div class="card text-center py-12 flex items-center justify-center gap-2" style="opacity: 0.5;"><span class="loader"></span> {{ i18n.t('common.loading') }}</div>
           } @else {
             @for (c of categorias(); track c.id) {
               <div class="card flex items-center gap-3">
-                <span class="text-sm flex-1">{{ c.nombre }}</span>
-                <span class="text-xs shrink-0" style="opacity: 0.35; white-space: nowrap;">{{ catRefCount(c.id) }} refs</span>
-                <button class="btn btn-ghost btn-sm text-sm" (click)="setDefaultCategoria(c.id)" [style.opacity]="defaultCategoriaId === c.id ? '1' : '0.3'" title="Set as default">⭐</button>
-                <button class="btn btn-ghost btn-sm" (click)="openCatModal(c)" title="Editar">✏️</button>
-                <button class="btn btn-ghost btn-sm" (click)="removeCategoria(c.id)" title="Eliminar">🗑️</button>
+                <span class="text-sm flex-1">{{ i18n.categoriaLabel(c.nombre) }}</span>
+                <span class="text-xs shrink-0" style="opacity: 0.35; white-space: nowrap;">{{ catRefCount(c.id) }} {{ i18n.t('cfg.refs') }}</span>
+                <button class="btn btn-ghost btn-sm text-sm" (click)="setDefaultCategoria(c.id)" [style.opacity]="defaultCategoriaId === c.id ? '1' : '0.3'" [title]="i18n.t('cfg.setDefault')">⭐</button>
+                <button class="btn btn-ghost btn-sm" (click)="openCatModal(c)" [title]="i18n.t('common.edit')">✏️</button>
+                <button class="btn btn-ghost btn-sm" (click)="removeCategoria(c.id)" [title]="i18n.t('common.delete')">🗑️</button>
               </div>
             }
           }
@@ -76,18 +77,18 @@ type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags';
       @if (activeSection() === 'idiomas') {
         <div>
           <div class="flex justify-end mb-4">
-            <button class="btn btn-primary w-full sm:w-auto" (click)="openIdiomaModal()">+ Nuevo idioma</button>
+            <button class="btn btn-primary w-full sm:w-auto" (click)="openIdiomaModal()">{{ i18n.t('cfg.nuevoIdioma') }}</button>
           </div>
           @if (loading()) {
-            <div class="card text-center py-12 flex items-center justify-center gap-2" style="opacity: 0.5;"><span class="loader"></span> Cargando...</div>
+            <div class="card text-center py-12 flex items-center justify-center gap-2" style="opacity: 0.5;"><span class="loader"></span> {{ i18n.t('common.loading') }}</div>
           } @else {
             @for (i of idiomas(); track i.id) {
               <div class="card flex items-center gap-3">
                 <span class="text-sm flex-1">{{ i.nombre }}</span>
-                <span class="text-xs shrink-0" style="opacity: 0.35; white-space: nowrap;">{{ idiomaRefCount(i.nombre) }} refs</span>
-                <button class="btn btn-ghost btn-sm text-sm" (click)="setDefaultIdioma(i.id)" [style.opacity]="defaultIdiomaNombre === i.nombre ? '1' : '0.3'" title="Set as default">⭐</button>
-                <button class="btn btn-ghost btn-sm" (click)="openIdiomaModal(i)" title="Editar">✏️</button>
-                <button class="btn btn-ghost btn-sm" (click)="removeIdioma(i.id)" title="Eliminar">🗑️</button>
+                <span class="text-xs shrink-0" style="opacity: 0.35; white-space: nowrap;">{{ idiomaRefCount(i.nombre) }} {{ i18n.t('cfg.refs') }}</span>
+                <button class="btn btn-ghost btn-sm text-sm" (click)="setDefaultIdioma(i.id)" [style.opacity]="defaultIdiomaNombre === i.nombre ? '1' : '0.3'" [title]="i18n.t('cfg.setDefault')">⭐</button>
+                <button class="btn btn-ghost btn-sm" (click)="openIdiomaModal(i)" [title]="i18n.t('common.edit')">✏️</button>
+                <button class="btn btn-ghost btn-sm" (click)="removeIdioma(i.id)" [title]="i18n.t('common.delete')">🗑️</button>
               </div>
             }
           }
@@ -98,17 +99,17 @@ type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags';
       @if (activeSection() === 'tags') {
         <div>
           <div class="flex justify-end mb-4">
-            <button class="btn btn-primary w-full sm:w-auto" (click)="openTagModal()">+ Nuevo tag</button>
+            <button class="btn btn-primary w-full sm:w-auto" (click)="openTagModal()">{{ i18n.t('cfg.nuevoTag') }}</button>
           </div>
           @if (loading()) {
-            <div class="card text-center py-12 flex items-center justify-center gap-2" style="opacity: 0.5;"><span class="loader"></span> Cargando...</div>
+            <div class="card text-center py-12 flex items-center justify-center gap-2" style="opacity: 0.5;"><span class="loader"></span> {{ i18n.t('common.loading') }}</div>
           } @else {
             @for (t of tags(); track t.id) {
               <div class="card flex items-center gap-3">
                 <span class="w-3 h-3 rounded-full shrink-0" [style.background-color]="t.color"></span>
-                <span class="text-sm flex-1">{{ formatTagName(t.nombre) }}</span>
-                <button class="btn btn-ghost btn-sm" (click)="openTagModal(t)" title="Editar">✏️</button>
-                <button class="btn btn-ghost btn-sm" (click)="removeTag(t.id)" title="Eliminar">🗑️</button>
+                <span class="text-sm flex-1">{{ i18n.tagLabel(t.nombre) }}</span>
+                <button class="btn btn-ghost btn-sm" (click)="openTagModal(t)" [title]="i18n.t('common.edit')">✏️</button>
+                <button class="btn btn-ghost btn-sm" (click)="removeTag(t.id)" [title]="i18n.t('common.delete')">🗑️</button>
               </div>
             }
           }
@@ -118,16 +119,16 @@ type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags';
 
     <!-- DATOS MODAL -->
     @if (modalDatos()) {
-      <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]" style="background: rgba(0,0,0,0.35);" (click)="closeModals()">
+      <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]" style="background: rgba(0,0,0,0.35);">
         <div class="card w-full max-w-sm mx-4 animate-fade-in" (click)="$event.stopPropagation()">
-          <h3 class="text-base font-semibold mb-4">{{ editDatoId() ? 'Editar variable' : 'Nueva variable' }}</h3>
+          <h3 class="text-base font-semibold mb-4">{{ editDatoId() ? i18n.t('cfg.dato.editar') : i18n.t('cfg.dato.nueva') }}</h3>
           <div class="space-y-3">
-            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">Clave</label><input [(ngModel)]="formDatoClave" class="text-sm font-mono" /></div>
-            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">Valor</label><input [(ngModel)]="formDatoValor" class="text-sm" /></div>
+            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('cfg.clave') }}</label><input [(ngModel)]="formDatoClave" class="text-sm font-mono" /></div>
+            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('cfg.valor') }}</label><input [(ngModel)]="formDatoValor" class="text-sm" /></div>
           </div>
           <div class="flex justify-end gap-2 mt-5">
-            <button class="btn btn-outline" (click)="closeModals()">Cancelar</button>
-            <button class="btn btn-primary" (click)="saveDato()">{{ editDatoId() ? 'Guardar' : 'Crear' }}</button>
+            <button class="btn btn-outline" (click)="closeModals()">{{ i18n.t('common.cancel') }}</button>
+            <button class="btn btn-primary" (click)="saveDato()">{{ editDatoId() ? i18n.t('common.save') : i18n.t('common.create') }}</button>
           </div>
         </div>
       </div>
@@ -135,13 +136,13 @@ type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags';
 
     <!-- CATEGORÍA MODAL -->
     @if (modalCat()) {
-      <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]" style="background: rgba(0,0,0,0.35);" (click)="closeModals()">
+      <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]" style="background: rgba(0,0,0,0.35);">
         <div class="card w-full max-w-sm mx-4 animate-fade-in" (click)="$event.stopPropagation()">
-          <h3 class="text-base font-semibold mb-4">{{ editCatId() ? 'Editar categoría' : 'Nueva categoría' }}</h3>
-          <input [(ngModel)]="formCatNombre" class="text-sm" placeholder="Nombre" />
+          <h3 class="text-base font-semibold mb-4">{{ editCatId() ? i18n.t('cfg.categoria.editar') : i18n.t('cfg.categoria.nueva') }}</h3>
+          <input [(ngModel)]="formCatNombre" class="text-sm" [placeholder]="i18n.t('cfg.nombre')" />
           <div class="flex justify-end gap-2 mt-5">
-            <button class="btn btn-outline" (click)="closeModals()">Cancelar</button>
-            <button class="btn btn-primary" (click)="saveCategoria()">{{ editCatId() ? 'Guardar' : 'Crear' }}</button>
+            <button class="btn btn-outline" (click)="closeModals()">{{ i18n.t('common.cancel') }}</button>
+            <button class="btn btn-primary" (click)="saveCategoria()">{{ editCatId() ? i18n.t('common.save') : i18n.t('common.create') }}</button>
           </div>
         </div>
       </div>
@@ -149,20 +150,20 @@ type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags';
 
     <!-- IDIOMA MODAL -->
     @if (modalIdioma()) {
-      <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]" style="background: rgba(0,0,0,0.35);" (click)="closeModals()">
+      <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]" style="background: rgba(0,0,0,0.35);">
         <div class="card w-full max-w-sm mx-4 animate-fade-in" (click)="$event.stopPropagation()">
-          <h3 class="text-base font-semibold mb-4">{{ editIdiomaId() ? 'Editar idioma' : 'Nuevo idioma' }}</h3>
+          <h3 class="text-base font-semibold mb-4">{{ editIdiomaId() ? i18n.t('cfg.idioma.editar') : i18n.t('cfg.idioma.nuevo') }}</h3>
           @if (!editIdiomaId()) {
             <select [(ngModel)]="formIdiomaNombre" class="text-sm">
-              <option [ngValue]="''" disabled>Seleccionar idioma</option>
+              <option [ngValue]="''" disabled>{{ i18n.t('cfg.idioma.select') }}</option>
               @for (lang of availableIdiomas(); track lang) { <option [value]="lang">{{ lang }}</option> }
             </select>
           } @else {
-            <input [(ngModel)]="formIdiomaNombre" class="text-sm" placeholder="ej: ESP" />
+            <input [(ngModel)]="formIdiomaNombre" class="text-sm" [placeholder]="i18n.t('cfg.idioma.ej')" />
           }
           <div class="flex justify-end gap-2 mt-5">
-            <button class="btn btn-outline" (click)="closeModals()">Cancelar</button>
-            <button class="btn btn-primary" (click)="saveIdioma()">{{ editIdiomaId() ? 'Guardar' : 'Crear' }}</button>
+            <button class="btn btn-outline" (click)="closeModals()">{{ i18n.t('common.cancel') }}</button>
+            <button class="btn btn-primary" (click)="saveIdioma()">{{ editIdiomaId() ? i18n.t('common.save') : i18n.t('common.create') }}</button>
           </div>
         </div>
       </div>
@@ -170,26 +171,26 @@ type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags';
 
     <!-- TAG MODAL -->
     @if (modalTag()) {
-      <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]" style="background: rgba(0,0,0,0.35);" (click)="closeModals()">
+      <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]" style="background: rgba(0,0,0,0.35);">
         <div class="card w-full max-w-sm mx-4 animate-fade-in" (click)="$event.stopPropagation()">
-          <h3 class="text-base font-semibold mb-4">{{ editTagId() ? 'Editar tag' : 'Nuevo tag' }}</h3>
+          <h3 class="text-base font-semibold mb-4">{{ editTagId() ? i18n.t('cfg.tag.editar') : i18n.t('cfg.tag.nuevo') }}</h3>
           <div class="space-y-3">
             <div>
-              <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">Nombre</label>
-              <input [(ngModel)]="formTagNombre" class="text-sm" placeholder="ej: Entrevista" />
+              <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('cfg.nombre') }}</label>
+              <input [(ngModel)]="formTagNombre" class="text-sm" [placeholder]="i18n.t('cfg.tagPlaceholder')" />
             </div>
             <div>
-              <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">Color</label>
+              <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('cfg.color') }}</label>
               <div class="flex items-center gap-2">
-                <button type="button" class="w-8 h-8 rounded-md flex items-center justify-center text-base border-0 cursor-pointer transition-colors" style="font-size: 1rem; background: transparent;" (click)="tagColorInput.click()" title="Elegir color">🎨</button>
+                <button type="button" class="w-8 h-8 rounded-md flex items-center justify-center text-base border-0 cursor-pointer transition-colors" style="font-size: 1rem; background: transparent;" (click)="tagColorInput.click()" [title]="i18n.t('cfg.elegirColor')">🎨</button>
                 <input #tagColorInput type="color" [(ngModel)]="formTagColor" style="position: absolute; width: 0; height: 0; opacity: 0; border: none; padding: 0; margin: 0; overflow: hidden;" />
                 <span class="w-5 h-5 rounded-full shrink-0" style="border: 2px solid var(--border);" [style.background-color]="formTagColor"></span>
               </div>
             </div>
           </div>
           <div class="flex justify-end gap-2 mt-5">
-            <button class="btn btn-outline" (click)="closeModals()">Cancelar</button>
-            <button class="btn btn-primary" (click)="saveTag()">{{ editTagId() ? 'Guardar' : 'Crear' }}</button>
+            <button class="btn btn-outline" (click)="closeModals()">{{ i18n.t('common.cancel') }}</button>
+            <button class="btn btn-primary" (click)="saveTag()">{{ editTagId() ? i18n.t('common.save') : i18n.t('common.create') }}</button>
           </div>
         </div>
       </div>
@@ -197,16 +198,16 @@ type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags';
 
     <!-- ELIMINAR TAG: REASIGNACIÓN -->
     @if (deleteTagModal()) {
-      <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]" style="background: rgba(0,0,0,0.35);" (click)="cancelDeleteTag()">
+      <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]" style="background: rgba(0,0,0,0.35);">
         <div class="card w-full max-w-sm mx-4 animate-fade-in" (click)="$event.stopPropagation()">
-          <h3 class="text-base font-semibold mb-2">Eliminar etiqueta</h3>
-          <p class="text-sm mb-4" style="opacity: 0.7;">"{{ formatTagName(pendingTagName()) }}" se usa en {{ pendingDeleteCount }} postulaciones. ¿A qué etiqueta las reasignás?</p>
+          <h3 class="text-base font-semibold mb-2">{{ i18n.t('cfg.deleteTagTitle') }}</h3>
+          <p class="text-sm mb-4" style="opacity: 0.7;">{{ i18n.t('cfg.deleteTagMsg', { tag: i18n.tagLabel(pendingTagName()), count: pendingDeleteCount }) }}</p>
           <select [(ngModel)]="reassignTagId" class="text-sm">
-            @for (t of deleteDestTags(); track t.id) { <option [ngValue]="t.id">{{ formatTagName(t.nombre) }}</option> }
+            @for (t of deleteDestTags(); track t.id) { <option [ngValue]="t.id">{{ i18n.tagLabel(t.nombre) }}</option> }
           </select>
           <div class="flex justify-end gap-2 mt-5">
-            <button class="btn btn-outline" (click)="cancelDeleteTag()">Cancelar</button>
-            <button class="btn btn-primary" (click)="confirmDeleteTag()">Eliminar y reasignar</button>
+            <button class="btn btn-outline" (click)="cancelDeleteTag()">{{ i18n.t('common.cancel') }}</button>
+            <button class="btn btn-primary" (click)="confirmDeleteTag()">{{ i18n.t('cfg.deleteAndReassign') }}</button>
           </div>
         </div>
       </div>
@@ -221,11 +222,11 @@ export class ConfiguracionComponent implements OnInit {
   loading = signal(false);
 
   activeSection = signal<ConfigSection>('datos');
-  sections: { id: ConfigSection; label: string }[] = [
-    { id: 'datos', label: 'Datos Personales' },
-    { id: 'categorias', label: 'Categorías' },
-    { id: 'idiomas', label: 'Idiomas' },
-    { id: 'tags', label: 'Tags' },
+  sections: { id: ConfigSection; labelKey: any }[] = [
+    { id: 'datos', labelKey: 'cfg.section.datos' },
+    { id: 'categorias', labelKey: 'cfg.section.categorias' },
+    { id: 'idiomas', labelKey: 'cfg.section.idiomas' },
+    { id: 'tags', labelKey: 'cfg.section.tags' },
   ];
 
   private allTemplates: any[] = [];
@@ -244,6 +245,7 @@ export class ConfiguracionComponent implements OnInit {
     private api: ApiService,
     private dialog: DialogService,
     private shared: SharedStateService,
+    public i18n: I18nService,
   ) {
     effect(() => {
       if (this.shared.activeTab() === 'config' && !this.loaded()) {
@@ -255,6 +257,12 @@ export class ConfiguracionComponent implements OnInit {
   }
 
   ngOnInit() {}
+
+  @HostListener('document:keydown.escape')
+  onEsc() {
+    if (this.deleteTagModal()) { this.cancelDeleteTag(); return; }
+    if (this.modalDatos() || this.modalCat() || this.modalIdioma() || this.modalTag()) this.closeModals();
+  }
 
   reloadAllTemplates() { this.api.getTemplates().subscribe(d => this.allTemplates = d); }
 
@@ -306,13 +314,13 @@ export class ConfiguracionComponent implements OnInit {
 
   async saveDato() {
     const clave = this.formDatoClave.trim(); const valor = this.formDatoValor;
-    if (!clave) { this.dialog.toast('La clave no puede estar vacía'); return; }
-    if (!/^[a-z0-9_]+$/.test(clave)) { this.dialog.toast('Formato inválido. Solo minúsculas, números y guiones bajos'); return; }
+    if (!clave) { this.dialog.toast(this.i18n.t('cfg.claveVacia')); return; }
+    if (!/^[a-z0-9_]+$/.test(clave)) { this.dialog.toast(this.i18n.t('cfg.claveInvalida')); return; }
     const id = this.editDatoId();
     if (id && this.oldClave && clave !== this.oldClave) {
       const affected = this.allTemplates.filter((t: any) => new RegExp(`\\{${this.oldClave}\\}`, 'g').test(t.contenido));
       if (affected.length > 0) {
-        const ok = await this.dialog.confirm(`¿Renombrar {${this.oldClave}} a {${clave}} en ${affected.length} templates?`);
+        const ok = await this.dialog.confirm(this.i18n.t('cfg.renameClave', { old: `{${this.oldClave}}`, new: `{${clave}}`, count: affected.length }));
         if (!ok) return;
         for (const t of affected) { this.api.updateTemplate(t.id, { contenido: t.contenido.replace(new RegExp(`\\{${this.oldClave}\\}`, 'g'), `{${clave}}`) }).subscribe(); }
         this.api.getTemplates().subscribe(d => this.allTemplates = d);
@@ -323,7 +331,7 @@ export class ConfiguracionComponent implements OnInit {
   }
 
   async removeDato(id: number) {
-    const ok = await this.dialog.confirm('¿Eliminar esta variable?');
+    const ok = await this.dialog.confirm(this.i18n.t('cfg.delVariable'));
     if (!ok) return;
     this.api.deleteConfig(id).subscribe(() => { this.shared.configRefresh.update(v => v + 1); this.api.getConfig().subscribe(d => this.entries.set(d)); });
   }
@@ -331,13 +339,13 @@ export class ConfiguracionComponent implements OnInit {
   // ── CATEGORÍAS ──
   openCatModal(c?: Categoria) { this.editCatId.set(c ? c.id : null); this.formCatNombre = c ? c.nombre : ''; this.modalCat.set(true); }
   async setDefaultCategoria(id: number) {
-    const ok = await this.dialog.confirm('¿Marcar esta categoría como default?');
+    const ok = await this.dialog.confirm(this.i18n.t('cfg.defaultCategoriaConfirm'));
     if (!ok) return;
     this.api.setDefaultCategoria(id).subscribe(() => { this.defaultCategoriaId = id; this.shared.configRefresh.update(v => v + 1); });
   }
 
   async setDefaultIdioma(id: number) {
-    const ok = await this.dialog.confirm('¿Marcar este idioma como default?');
+    const ok = await this.dialog.confirm(this.i18n.t('cfg.defaultIdiomaConfirm'));
     if (!ok) return;
     this.api.setDefaultIdioma(id).subscribe(() => {
       const idioma = this.idiomas().find(i => i.id === id);
@@ -347,12 +355,12 @@ export class ConfiguracionComponent implements OnInit {
   }
 
   saveCategoria() {
-    const n = this.formCatNombre.trim(); if (!n) { this.dialog.toast('El nombre es requerido'); return; }
+    const n = this.formCatNombre.trim(); if (!n) { this.dialog.toast(this.i18n.t('cfg.nombreRequerido')); return; }
     const id = this.editCatId();
-    (id ? this.api.updateCategoria(id, n) : this.api.createCategoria(n)).subscribe({ next: () => { this.closeModals(); this.api.getCategorias().subscribe(d => this.categorias.set(d)); this.shared.categoriasRefresh.update(v => v + 1); }, error: () => this.dialog.toast('Error al guardar') });
+    (id ? this.api.updateCategoria(id, n) : this.api.createCategoria(n)).subscribe({ next: () => { this.closeModals(); this.api.getCategorias().subscribe(d => this.categorias.set(d)); this.shared.categoriasRefresh.update(v => v + 1); }, error: () => this.dialog.toast(this.i18n.t('common.error.save')) });
   }
   async removeCategoria(id: number) {
-    const ok = await this.dialog.confirm('¿Eliminar esta categoría? Se borrarán también sus templates asociados.');
+    const ok = await this.dialog.confirm(this.i18n.t('cfg.delCategoria'));
     if (!ok) return;
     this.api.deleteCategoria(id).subscribe(() => { this.api.getCategorias().subscribe(d => this.categorias.set(d)); this.shared.categoriasRefresh.update(v => v + 1); this.shared.templatesRefresh.update(v => v + 1); });
   }
@@ -360,41 +368,54 @@ export class ConfiguracionComponent implements OnInit {
   // ── IDIOMAS ──
   openIdiomaModal(i?: Idioma) { this.editIdiomaId.set(i ? i.id : null); this.formIdiomaNombre = i ? i.nombre : ''; this.modalIdioma.set(true); }
   saveIdioma() {
-    const n = this.formIdiomaNombre.trim(); if (!n) { this.dialog.toast('El nombre es requerido'); return; }
+    const n = this.formIdiomaNombre.trim(); if (!n) { this.dialog.toast(this.i18n.t('cfg.nombreRequerido')); return; }
     const id = this.editIdiomaId();
-    (id ? this.api.updateIdioma(id, n) : this.api.createIdioma(n)).subscribe({ next: () => { this.closeModals(); this.api.getIdiomas().subscribe(d => { this.idiomas.set(d); this.updateAvailableIdiomas(); }); this.shared.idiomasRefresh.update(v => v + 1); }, error: () => this.dialog.toast('Error al guardar') });
+    (id ? this.api.updateIdioma(id, n) : this.api.createIdioma(n)).subscribe({ next: () => { this.closeModals(); this.api.getIdiomas().subscribe(d => { this.idiomas.set(d); this.updateAvailableIdiomas(); }); this.shared.idiomasRefresh.update(v => v + 1); }, error: () => this.dialog.toast(this.i18n.t('common.error.save')) });
   }
   async removeIdioma(id: number) {
-    const ok = await this.dialog.confirm('¿Eliminar este idioma? Los templates y postulaciones existentes no se verán afectados.');
+    const ok = await this.dialog.confirm(this.i18n.t('cfg.delIdioma'));
     if (!ok) return;
     this.api.deleteIdioma(id).subscribe(() => { this.api.getIdiomas().subscribe(d => { this.idiomas.set(d); this.updateAvailableIdiomas(); }); this.shared.idiomasRefresh.update(v => v + 1); });
   }
 
   // ── TAGS ──
   slugify(name: string) { return name.trim().toLowerCase().replace(/[^\p{L}\p{N}_]+/gu, '_').replace(/^_+|_+$/g, ''); }
-  formatTagName(n: string) { return n.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase()); }
-  openTagModal(t?: Tag) { this.editTagId.set(t ? t.id : null); this.formTagNombre = t ? t.nombre : ''; this.formTagColor = t ? t.color : '#3b82f6'; this.modalTag.set(true); }
+  openTagModal(t?: Tag) {
+    this.editTagId.set(t ? t.id : null);
+    this.formTagNombre = t ? this.i18n.tagLabel(t.nombre) : '';
+    this.formTagColor = t ? t.color : '#3b82f6';
+    this.modalTag.set(true);
+  }
   async saveTag() {
-    const n = this.slugify(this.formTagNombre); if (!n) { this.dialog.toast('El nombre es requerido'); return; }
+    const n = this.slugify(this.formTagNombre); if (!n) { this.dialog.toast(this.i18n.t('cfg.nombreRequerido')); return; }
     const id = this.editTagId();
     if (id) {
       const old = this.tags().find(t => t.id === id);
       if (old && n !== old.nombre) {
+        const sameLabel = this.i18n.tagLabel(n) === this.i18n.tagLabel(old.nombre);
+        if (sameLabel) {
+          // El usuario re-escribió el mismo label traducido: solo actualiza color, no renombra.
+          this.api.updateTag(id, { nombre: old.nombre, color: this.formTagColor })
+            .subscribe({ next: () => { this.closeModals(); this.api.getTags().subscribe(d => this.tags.set(d)); this.shared.tagsRefresh.update(v => v + 1); }, error: () => this.dialog.toast(this.i18n.t('common.error.save')) });
+          return;
+        }
         const affected = await new Promise<number>(resolve => {
           this.api.getPostulaciones().subscribe(list => resolve(list.filter(p => p.estado === old.nombre).length));
         });
+        const oldL = this.i18n.tagLabel(old.nombre);
+        const newL = this.i18n.tagLabel(n);
         const msg = affected > 0
-          ? `¿Renombrar "${this.formatTagName(old.nombre)}" a "${this.formatTagName(n)}"? Se actualizará el estado en ${affected} postulaciones guardadas que usan esta etiqueta.`
-          : `¿Renombrar "${this.formatTagName(old.nombre)}" a "${this.formatTagName(n)}"?`;
+          ? this.i18n.t('cfg.renameTag', { old: oldL, new: newL, count: affected })
+          : this.i18n.t('cfg.renameTagSimple', { old: oldL, new: newL });
         const ok = await this.dialog.confirm(msg);
         if (!ok) return;
         this.api.updateTag(id, { nombre: n, color: this.formTagColor, propagate: true })
-          .subscribe({ next: () => { this.closeModals(); this.api.getTags().subscribe(d => this.tags.set(d)); this.shared.historialRefresh.update(v => v + 1); this.shared.tagsRefresh.update(v => v + 1); }, error: () => this.dialog.toast('Error al guardar') });
+          .subscribe({ next: () => { this.closeModals(); this.api.getTags().subscribe(d => this.tags.set(d)); this.shared.historialRefresh.update(v => v + 1); this.shared.tagsRefresh.update(v => v + 1); }, error: () => this.dialog.toast(this.i18n.t('common.error.save')) });
         return;
       }
     }
     (id ? this.api.updateTag(id, { nombre: n, color: this.formTagColor }) : this.api.createTag(n, this.formTagColor))
-      .subscribe({ next: () => { this.closeModals(); this.api.getTags().subscribe(d => this.tags.set(d)); this.shared.tagsRefresh.update(v => v + 1); }, error: () => this.dialog.toast('Error al guardar') });
+      .subscribe({ next: () => { this.closeModals(); this.api.getTags().subscribe(d => this.tags.set(d)); this.shared.tagsRefresh.update(v => v + 1); }, error: () => this.dialog.toast(this.i18n.t('common.error.save')) });
   }
   async removeTag(id: number) {
     const tag = this.tags().find(t => t.id === id);
@@ -403,14 +424,14 @@ export class ConfiguracionComponent implements OnInit {
       this.api.getPostulaciones().subscribe(list => resolve(list.filter(p => p.estado === tag.nombre).length));
     });
     if (affected === 0) {
-      const ok = await this.dialog.confirm(`¿Eliminar la etiqueta "${this.formatTagName(tag.nombre)}"?`);
+      const ok = await this.dialog.confirm(this.i18n.t('cfg.deleteTagSimple', { tag: this.i18n.tagLabel(tag.nombre) }));
       if (!ok) return;
-      this.api.deleteTag(id).subscribe({ next: () => { this.api.getTags().subscribe(d => this.tags.set(d)); this.shared.tagsRefresh.update(v => v + 1); this.shared.historialRefresh.update(v => v + 1); }, error: () => this.dialog.toast('Error al eliminar') });
+      this.api.deleteTag(id).subscribe({ next: () => { this.api.getTags().subscribe(d => this.tags.set(d)); this.shared.tagsRefresh.update(v => v + 1); this.shared.historialRefresh.update(v => v + 1); }, error: () => this.dialog.toast(this.i18n.t('common.error.delete')) });
       return;
     }
     const others = this.tags().filter(t => t.id !== id);
     if (others.length === 0) {
-      this.dialog.toast('No hay otras etiquetas para asignar. Creá una antes de eliminar.');
+      this.dialog.toast(this.i18n.t('cfg.sinOtrasEtiquetas'));
       return;
     }
     this.pendingDeleteId = id;
@@ -430,7 +451,7 @@ export class ConfiguracionComponent implements OnInit {
 
   confirmDeleteTag() {
     const id = this.pendingDeleteId;
-    if (id === null || this.reassignTagId === null) { this.dialog.toast('Elegí una etiqueta destino'); return; }
+    if (id === null || this.reassignTagId === null) { this.dialog.toast(this.i18n.t('cfg.elegiDestino')); return; }
     this.api.deleteTag(id, this.reassignTagId).subscribe({
       next: () => {
         this.cancelDeleteTag();
@@ -438,7 +459,7 @@ export class ConfiguracionComponent implements OnInit {
         this.shared.tagsRefresh.update(v => v + 1);
         this.shared.historialRefresh.update(v => v + 1);
       },
-      error: () => this.dialog.toast('Error al eliminar'),
+      error: () => this.dialog.toast(this.i18n.t('common.error.delete')),
     });
   }
 }

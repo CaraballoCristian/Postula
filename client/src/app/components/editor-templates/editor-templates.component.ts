@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, effect } from "@angular/core";
+import { Component, OnInit, signal, effect, HostListener } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { DropdownComponent } from "../dropdown/dropdown.component";
 import { ApiService } from "../../services/api.service";
@@ -7,11 +7,11 @@ import { SharedStateService } from "../../services/shared-state.service";
 import {
   Categoria,
   Template,
-  TIPO_LABELS,
   TIPO_ICONS,
   TIPOS_MENSAJE,
   Idioma,
 } from "../../models/interfaces";
+import { I18nService } from "../../services/i18n.service";
 
 @Component({
   selector: "app-editor-templates",
@@ -25,7 +25,7 @@ import {
         [selected]="filtroCat"
         (selectedChange)="filtroCat = $event; loadTemplates()"
         [options]="catFilterOpts()"
-        placeholder="Categorías"
+        [placeholder]="i18n.t('tpl.filtroCat')"
       />
       <app-dropdown
         id="filtroLang"
@@ -33,13 +33,13 @@ import {
         [selected]="filtroLang"
         (selectedChange)="filtroLang = $event; loadTemplates()"
         [options]="idiomaFilterOpts()"
-        placeholder="Idiomas"
+        [placeholder]="i18n.t('tpl.filtroLang')"
       />
       <button
         class="btn btn-primary w-full sm:w-auto sm:ml-auto"
         (click)="openModal()"
       >
-        + Nuevo Template
+        {{ i18n.t('tpl.nuevo') }}
       </button>
     </div>
 
@@ -48,11 +48,11 @@ import {
         class="card text-center py-12 flex items-center justify-center gap-2"
         style="opacity: 0.5;"
       >
-        <span class="loader"></span> Cargando...
+        <span class="loader"></span> {{ i18n.t('common.loading') }}
       </div>
     } @else if (templates().length === 0) {
       <div class="card text-center py-12" style="opacity: 0.35;">
-        No hay templates para este filtro.
+        {{ i18n.t('tpl.sinTemplates') }}
       </div>
     }
 
@@ -65,7 +65,7 @@ import {
               <span
                 class="badge text-[0.65rem]"
                 style="background: var(--accent); color: #fff;"
-                >{{ TIPO_ICONS[t.tipo] }} {{ TIPO_LABELS[t.tipo] }}</span
+                >{{ TIPO_ICONS[t.tipo] }} {{ tipoLabel(t.tipo) }}</span
               >
               <span
                 class="badge text-[0.65rem]"
@@ -101,17 +101,16 @@ import {
       <div
         class="fixed inset-0 z-50 flex items-start justify-center pt-[8vh]"
         style="background: rgba(0,0,0,0.35);"
-        (click)="closeModal()"
       >
         <div
           class="card w-full max-w-2xl max-h-[85vh] overflow-y-auto mx-4 animate-fade-in"
           (click)="$event.stopPropagation()"
         >
           <h3 class="text-base font-semibold mb-4">
-            {{ editingId() ? "Editar Template" : "Nuevo Template" }}
+            {{ editingId() ? i18n.t('tpl.editarTitle') : i18n.t('tpl.nuevoTitle') }}
           </h3>
           <div class="space-y-3">
-            <input [(ngModel)]="formNombre" placeholder="Nombre del template" [style.border-color]="nombreError() ? '#ef4444' : ''" (ngModelChange)="nombreError.set('')" />
+            <input [(ngModel)]="formNombre" [placeholder]="i18n.t('tpl.nombrePlaceholder')" [style.border-color]="nombreError() ? '#ef4444' : ''" (ngModelChange)="nombreError.set('')" />
             @if (nombreError()) { <span class="text-xs" style="color: #ef4444;">{{ nombreError() }}</span> }
             <div class="grid grid-cols-3 gap-3">
               <app-dropdown
@@ -119,28 +118,27 @@ import {
                 [selected]="formCategoriaId"
                 (selectedChange)="formCategoriaId = $event"
                 [options]="catOpts()"
-                placeholder="Categoría"
+                [placeholder]="i18n.t('tpl.categoria')"
               />
               <app-dropdown
                 id="formIdioma"
                 [selected]="formIdioma"
                 (selectedChange)="formIdioma = $event"
                 [options]="idiomaOpts()"
-                placeholder="Idioma"
+                [placeholder]="i18n.t('tpl.idioma')"
               />
               <app-dropdown
                 id="formTipo"
                 [selected]="formTipo"
                 (selectedChange)="formTipo = $event"
                 [options]="tipoOpts()"
-                placeholder="Tipo"
+                [placeholder]="i18n.t('tpl.tipo')"
               />
             </div>
 
             <div>
               <label class="text-xs mb-1 block" style="opacity: 0.45;"
-                >Click en un chip para insertar el placeholder en el
-                cursor</label
+                >{{ i18n.t('tpl.chipHint') }}</label
               >
               <div class="flex flex-wrap gap-1 mb-2">
                 @for (ph of availablePlaceholders(); track ph) {
@@ -160,23 +158,23 @@ import {
                 rows="9"
                 class="font-mono text-sm"
                 [style.border-color]="contenidoError() ? '#ef4444' : ''"
-                placeholder="Hola {nombre_empleado}, vi tu perfil..."
+                [placeholder]="i18n.t('tpl.contenidoPlaceholder')"
               ></textarea>
               @if (contenidoError()) { <span class="text-xs" style="color: #ef4444;">{{ contenidoError() }}</span> }
             </div>
 
             @if (detectedPlaceholders().length > 0) {
               <div class="text-xs" style="opacity: 0.4;">
-                Placeholders usados: {{ joinPlaceholders() }}
+                {{ i18n.t('tpl.placeholdersUsados') }} {{ joinPlaceholders() }}
               </div>
             }
           </div>
           <div class="flex justify-end gap-2 mt-5">
             <button class="btn btn-outline" (click)="closeModal()">
-              Cancelar
+              {{ i18n.t('common.cancel') }}
             </button>
             <button class="btn btn-primary" (click)="saveTemplate()">
-              {{ editingId() ? "Guardar" : "Crear" }}
+              {{ editingId() ? i18n.t('common.save') : i18n.t('common.create') }}
             </button>
           </div>
         </div>
@@ -190,7 +188,6 @@ export class EditorTemplatesComponent implements OnInit {
   idiomas: Idioma[] = [];
   configKeys: string[] = [];
   tipos = TIPOS_MENSAJE;
-  TIPO_LABELS = TIPO_LABELS;
   TIPO_ICONS = TIPO_ICONS;
   filtroCat: number | null = null;
   filtroLang: string | null = null;
@@ -213,6 +210,7 @@ export class EditorTemplatesComponent implements OnInit {
     private api: ApiService,
     private dialog: DialogService,
     private shared: SharedStateService,
+    public i18n: I18nService,
   ) {
     effect(() => {
       if (this.shared.activeTab() === "templates" && !this.loaded()) {
@@ -226,6 +224,11 @@ export class EditorTemplatesComponent implements OnInit {
   }
 
   ngOnInit() {}
+
+  @HostListener('document:keydown.escape')
+  onEsc() {
+    if (this.modalOpen()) this.closeModal();
+  }
 
   initData() {
     this.loading.set(true);
@@ -366,32 +369,33 @@ export class EditorTemplatesComponent implements OnInit {
 
   catFilterOpts() {
     return [
-      { value: null, label: "Todas" },
-      ...this.categorias.map((c) => ({ value: c.id, label: c.nombre })),
+      { value: null, label: this.i18n.t('tpl.todas') },
+      ...this.categorias.map((c) => ({ value: c.id, label: this.i18n.categoriaLabel(c.nombre) })),
     ];
   }
   idiomaFilterOpts() {
     return [
-      { value: null, label: "Todos" },
+      { value: null, label: this.i18n.t('tpl.todos') },
       ...this.idiomas.map((i) => ({ value: i.nombre, label: i.nombre })),
     ];
   }
   catOpts() {
-    return this.categorias.map((c) => ({ value: c.id, label: c.nombre }));
+    return this.categorias.map((c) => ({ value: c.id, label: this.i18n.categoriaLabel(c.nombre) }));
   }
   idiomaOpts() {
     return this.idiomas.map((i) => ({ value: i.nombre, label: i.nombre }));
   }
   tipoOpts() {
-    return this.tipos.map((t) => ({ value: t, label: TIPO_LABELS[t] }));
+    return this.tipos.map((t) => ({ value: t, label: this.tipoLabel(t) }));
   }
+  tipoLabel(tipo: Template['tipo']) { return this.i18n.t(`tipo.${tipo}` as any); }
 
   saveTemplate() {
     this.nombreError.set('');
     this.contenidoError.set('');
 
-    if (!this.formNombre.trim()) { this.nombreError.set('El nombre es requerido'); return; }
-    if (!/\{empresa\}/.test(this.formContenido)) { this.contenidoError.set('Debe incluir {empresa}'); return; }
+    if (!this.formNombre.trim()) { this.nombreError.set(this.i18n.t('tpl.nombreError')); return; }
+    if (!/\{empresa\}/.test(this.formContenido)) { this.contenidoError.set(this.i18n.t('tpl.contenidoError')); return; }
 
     const data: any = {
       nombre: this.formNombre,
@@ -412,7 +416,7 @@ export class EditorTemplatesComponent implements OnInit {
   }
 
   async deleteTemplate(id: number) {
-    const ok = await this.dialog.confirm("¿Eliminar este template?");
+    const ok = await this.dialog.confirm(this.i18n.t('tpl.deleteConfirm'));
     if (!ok) return;
     this.api.deleteTemplate(id).subscribe(() => {
       this.loadTemplates();

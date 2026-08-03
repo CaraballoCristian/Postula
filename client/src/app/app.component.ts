@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { ClipboardService } from './services/clipboard.service';
 import { ThemeService } from './services/theme.service';
 import { SharedStateService } from './services/shared-state.service';
+import { I18nService } from './services/i18n.service';
 import { TabName } from './models/interfaces';
 import { ConfiguracionComponent } from './components/configuracion/configuracion.component';
 import { EditorTemplatesComponent } from './components/editor-templates/editor-templates.component';
@@ -33,14 +34,13 @@ import { DialogComponent } from './components/dialog/dialog.component';
               [style.background]="theme.isDark() ? 'var(--surface-hover)' : 'transparent'"
               style="color: var(--text); font-size: 1rem;"
               (click)="theme.isDark.set(!theme.isDark())"
-              title="Modo oscuro / claro"
+              [title]="i18n.t('theme.toggle')"
             >{{ theme.isDark() ? '☀' : '🌙' }}</button>
             <button
               class="w-8 h-8 rounded-md flex items-center justify-center text-base border-0 cursor-pointer transition-colors"
-              [style.background]="'transparent'"
               style="font-size: 1rem;"
               (click)="colorInput.click()"
-              title="Color acento"
+              [title]="i18n.t('theme.accent')"
             >🎨</button>
             <input
               #colorInput
@@ -49,6 +49,13 @@ import { DialogComponent } from './components/dialog/dialog.component';
               (ngModelChange)="theme.accentColor.set($event)"
               style="position: absolute; width: 0; height: 0; opacity: 0; border: none; padding: 0; margin: 0; overflow: hidden;"
             />
+            <span class="w-px h-5" style="background: var(--border);" aria-hidden="true"></span>
+            <button
+              class="px-2.5 py-1 text-xs font-medium rounded border-0 cursor-pointer select-none"
+              style="background: var(--surface); color: var(--accent);"
+              [title]="i18n.t('theme.switchLang')"
+              (click)="i18n.setLang(i18n.lang() === 'es' ? 'en' : 'es')"
+            >{{ i18n.lang() === 'es' ? 'EN' : 'ES' }}</button>
           </div>
         </header>
 
@@ -61,7 +68,7 @@ import { DialogComponent } from './components/dialog/dialog.component';
               [style.opacity]="shared.activeTab() === tab.id ? '1' : '0.55'"
               (click)="shared.activeTab.set(tab.id)"
             >
-              {{ tab.label }}
+              {{ i18n.t(tab.labelKey) }}
               @if (shared.activeTab() === tab.id) {
                 <span
                   class="absolute bottom-0 left-0 right-0 h-0.5 rounded-full transition-all duration-200"
@@ -91,7 +98,7 @@ import { DialogComponent } from './components/dialog/dialog.component';
 
       @if (clipboard.copied()) {
         <div class="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg text-sm text-white z-50 animate-slide-up" style="background: var(--accent);">
-          Copiado al portapapeles
+          {{ i18n.t('clipboard.copied') }}
         </div>
       }
 
@@ -104,16 +111,17 @@ import { DialogComponent } from './components/dialog/dialog.component';
   `],
 })
 export class AppComponent {
-  tabs: { id: TabName; label: string }[] = [
-    { id: 'postular', label: 'Nueva Postulación' },
-    { id: 'historial', label: 'Historial' },
-    { id: 'templates', label: 'Templates' },
-    { id: 'config', label: 'Configuración' },
+  tabs: { id: TabName; labelKey: any }[] = [
+    { id: 'postular', labelKey: 'tab.postular' },
+    { id: 'historial', labelKey: 'tab.historial' },
+    { id: 'templates', labelKey: 'tab.templates' },
+    { id: 'config', labelKey: 'tab.config' },
   ];
 
   constructor(
     public clipboard: ClipboardService,
     public theme: ThemeService,
     public shared: SharedStateService,
+    public i18n: I18nService,
   ) {}
 }

@@ -1,5 +1,7 @@
-import { Injectable, signal } from '@angular/core';
+import { Injectable, signal, effect } from '@angular/core';
 import { TabName } from '../models/interfaces';
+
+const TABS: TabName[] = ['postular', 'historial', 'templates', 'config'];
 
 @Injectable({ providedIn: 'root' })
 export class SharedStateService {
@@ -10,4 +12,10 @@ export class SharedStateService {
   tagsRefresh = signal(0);
   categoriasRefresh = signal(0);
   idiomasRefresh = signal(0);
+
+  constructor() {
+    const saved = localStorage.getItem('postulatool.tab') as TabName | null;
+    if (saved && TABS.includes(saved)) this.activeTab.set(saved);
+    effect(() => localStorage.setItem('postulatool.tab', this.activeTab()));
+  }
 }

@@ -5,7 +5,8 @@ import { ApiService } from '../../services/api.service';
 import { ClipboardService } from '../../services/clipboard.service';
 import { DialogService } from '../../services/dialog.service';
 import { SharedStateService } from '../../services/shared-state.service';
-import { Categoria, Template, TIPO_LABELS, TIPO_ICONS, TIPOS_MENSAJE, ESTADOS, Idioma, Tag } from '../../models/interfaces';
+import { Categoria, Template, TIPO_ICONS, TIPOS_MENSAJE, ESTADOS, Idioma, Tag } from '../../models/interfaces';
+import { I18nService } from '../../services/i18n.service';
 
 interface SelectedTemplate {
   tipo: Template['tipo'];
@@ -20,29 +21,29 @@ interface SelectedTemplate {
     <div class="space-y-4">
       @if (loading()) {
         <div class="card text-center py-6 flex items-center justify-center gap-2" style="opacity: 0.5;">
-          <span class="loader"></span> Cargando...
+          <span class="loader"></span> {{ i18n.t('common.loading') }}
         </div>
       } @else {
       <div class="space-y-4">
         <div class="flex flex-col sm:flex-row items-stretch sm:items-end gap-2">
           <div class="w-full sm:flex-1" style="max-width: 100%;">
-            <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">Categoría</label>
+            <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('np.categoria') }}</label>
             <app-dropdown
               id="postCat"
               [selected]="categoriaId"
               (selectedChange)="categoriaId = $event; onCategoriaChange()"
               [options]="catOpts()"
-              placeholder="Seleccionar"
+              [placeholder]="i18n.t('common.select')"
             />
           </div>
           <div class="w-full sm:flex-1" style="max-width: 100%;">
-            <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">Idioma</label>
+            <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('np.idioma') }}</label>
             <app-dropdown
               id="postIdioma"
               [selected]="idioma"
               (selectedChange)="idioma = $event; onIdiomaChange()"
               [options]="idiomaOpts()"
-              placeholder="Seleccionar"
+              [placeholder]="i18n.t('common.select')"
             />
           </div>
           <div class="hidden sm:block flex-1"></div>
@@ -50,7 +51,7 @@ interface SelectedTemplate {
             @for (tipo of tipos; track tipo) {
               <label class="toggle-pill" [class.active]="isChecked(tipo)" (click)="toggleTipo(tipo)" style="margin-bottom: 1px;">
                 <span>{{ TIPO_ICONS[tipo] }}</span>
-                <span>{{ TIPO_LABELS[tipo] }}</span>
+                <span>{{ tipoLabel(tipo) }}</span>
               </label>
             }
           }
@@ -60,13 +61,13 @@ interface SelectedTemplate {
           <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
             @for (sel of selected(); track sel.tipo) {
               <div>
-                <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ TIPO_ICONS[sel.tipo] }} {{ TIPO_LABELS[sel.tipo] }}</label>
+                <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ TIPO_ICONS[sel.tipo] }} {{ tipoLabel(sel.tipo) }}</label>
                 <app-dropdown
                   [id]="'tpl-' + sel.tipo"
                   [selected]="sel.template"
                   (selectedChange)="sel.template = $event; buildDynamicFields()"
                   [options]="tplOpts(sel.tipo)"
-                  placeholder="Seleccionar"
+                  [placeholder]="i18n.t('common.select')"
                 />
               </div>
             }
@@ -79,7 +80,7 @@ interface SelectedTemplate {
               <div>
                 <label class="text-xs block mb-1" style="opacity: 0.5;">{{ labelFromKey(field.key) }}</label>
                 <input [ngModel]="fieldValues()[field.key] || ''" (ngModelChange)="setField(field.key, $event)" [placeholder]="labelFromKey(field.key)" [style.border-color]="fieldErrors().has(field.key) ? '#ef4444' : ''" />
-                @if (fieldErrors().has(field.key)) { <span class="text-xs" style="color: #ef4444;">Obligatorio</span> }
+                @if (fieldErrors().has(field.key)) { <span class="text-xs" style="color: #ef4444;">{{ i18n.t('common.required') }}</span> }
               </div>
             }
           </div>
@@ -88,32 +89,32 @@ interface SelectedTemplate {
         @if (selected().length > 0 && dynamicFields().length > 0) {
           <div class="grid grid-cols-2 gap-x-3 gap-y-2">
             <div>
-              <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">Estado</label>
+              <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('np.estado') }}</label>
               <app-dropdown
                 id="postEstado"
                 [selected]="estado"
                 (selectedChange)="estado = $event"
                 [options]="estadoOpts()"
-                placeholder="Seleccionar"
+                [placeholder]="i18n.t('common.select')"
               />
             </div>
             <div>
-              <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">Link empresa</label>
-              <input [(ngModel)]="linkEmpresa" placeholder="https://..." class="text-sm" />
+              <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('np.linkEmpresa') }}</label>
+              <input [(ngModel)]="linkEmpresa" [placeholder]="i18n.t('np.linkEmpresaPh')" class="text-sm" />
             </div>
             <div>
-              <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">Contacto empleado</label>
-              <input [(ngModel)]="contactoEmpleado" placeholder="https://linkedin.com/..." class="text-sm" />
+              <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('np.contactoEmpleado') }}</label>
+              <input [(ngModel)]="contactoEmpleado" [placeholder]="i18n.t('np.contactoEmpleadoPh')" class="text-sm" />
             </div>
             <div class="col-span-2">
-              <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">Notas</label>
-              <textarea [(ngModel)]="notas" rows="2" class="text-sm" placeholder="Notas opcionales..."></textarea>
+              <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('np.notas') }}</label>
+              <textarea [(ngModel)]="notas" rows="2" class="text-sm" [placeholder]="i18n.t('np.notasPh')"></textarea>
             </div>
           </div>
         }
 
         @if (selected().length > 0) {
-          <button class="btn btn-primary w-full" (click)="generar()">Generar mensajes</button>
+          <button class="btn btn-primary w-full" (click)="generar()">{{ i18n.t('np.generar') }}</button>
         }
       </div>
 
@@ -122,9 +123,9 @@ interface SelectedTemplate {
           @for (res of resultados(); track res.tipo) {
             <div class="animate-fade-in" style="border: 1px solid var(--border); border-radius: 0.5rem; overflow: hidden;">
               <div class="flex items-center gap-3 px-4 py-2.5 cursor-pointer" [style.background-color]="expandedResult() === res.tipo ? 'var(--surface-hover)' : 'var(--surface)'" (click)="toggleResult(res.tipo)">
-                <span class="text-sm font-medium flex-1 truncate">{{ TIPO_ICONS[res.tipo] }} {{ TIPO_LABELS[res.tipo] }} <span class="text-xs" style="opacity: 0.35; font-weight: 400;">— {{ previewText(res.texto) }}</span></span>
+                <span class="text-sm font-medium flex-1 truncate">{{ TIPO_ICONS[res.tipo] }} {{ tipoLabel(res.tipo) }} <span class="text-xs" style="opacity: 0.35; font-weight: 400;">— {{ previewText(res.texto) }}</span></span>
                 <span class="text-xs" style="opacity: 0.4;">{{ expandedResult() === res.tipo ? '▲' : '▼' }}</span>
-                <button class="btn btn-ghost btn-sm text-sm" (click)="clipboard.copy(res.texto); $event.stopPropagation()" title="Copiar">📋</button>
+                <button class="btn btn-ghost btn-sm text-sm" (click)="clipboard.copy(res.texto); $event.stopPropagation()" [title]="i18n.t('hist.copy')">📋</button>
               </div>
               @if (expandedResult() === res.tipo) {
                 <div style="border-top: 1px solid var(--border);"><pre class="text-sm whitespace-pre-wrap font-sans leading-relaxed px-4 py-3" style="margin: 0;">{{ res.texto }}</pre></div>
@@ -132,8 +133,8 @@ interface SelectedTemplate {
             </div>
           }
           <div class="flex gap-2 mt-3">
-            <button class="btn btn-primary flex-1" (click)="copiarTodo()">📋 Copiar todo</button>
-            <button class="btn btn-outline" (click)="guardarPostulacion()">💾 Guardar</button>
+            <button class="btn btn-primary flex-1" (click)="copiarTodo()">📋 {{ i18n.t('np.copiarTodo') }}</button>
+            <button class="btn btn-outline" (click)="guardarPostulacion()">💾 {{ i18n.t('np.guardar') }}</button>
           </div>
         </div>
       }
@@ -146,7 +147,6 @@ export class NuevaPostulacionComponent implements OnInit {
   categorias: Categoria[] = [];
   idiomas: Idioma[] = [];
   tipos = TIPOS_MENSAJE;
-  TIPO_LABELS = TIPO_LABELS;
   TIPO_ICONS = TIPO_ICONS;
   categoriaId: number | null = null;
   idioma: string | null = null;
@@ -173,6 +173,7 @@ export class NuevaPostulacionComponent implements OnInit {
     public clipboard: ClipboardService,
     private dialog: DialogService,
     private shared: SharedStateService,
+    public i18n: I18nService,
   ) {
     effect(() => {
       const refresh = shared.templatesRefresh();
@@ -216,7 +217,7 @@ export class NuevaPostulacionComponent implements OnInit {
   loadTags(onDone?: () => void) {
     this.api.getTags().subscribe(data => {
       const prev = this.estados.map(e => e.value);
-      this.estados = data.map(t => ({ value: t.nombre, label: this.labelFromKey(t.nombre) }));
+      this.estados = data.map(t => ({ value: t.nombre, label: this.i18n.tagLabel(t.nombre) }));
       if (data.length === 0) {
         for (const e of ESTADOS) this.estados.push({ value: e.value, label: e.label });
       }
@@ -301,12 +302,14 @@ export class NuevaPostulacionComponent implements OnInit {
     return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
   }
 
+  tipoLabel(tipo: Template['tipo']) { return this.i18n.t(`tipo.${tipo}` as any); }
+
   toggleResult(tipo: Template['tipo']) { this.expandedResult.update(v => v === tipo ? null : tipo); }
 
-  catOpts() { return this.categorias.map(c => ({ value: c.id, label: c.nombre })); }
+  catOpts() { return this.categorias.map(c => ({ value: c.id, label: this.i18n.categoriaLabel(c.nombre) })); }
   idiomaOpts() { return this.idiomas.map(i => ({ value: i.nombre, label: i.nombre })); }
   tplOpts(tipo: Template['tipo']) { return this.templatesByTipo(tipo).map(t => ({ value: t, label: t.nombre })); }
-  estadoOpts() { return this.estados.map(e => ({ value: e.value, label: e.label })); }
+  estadoOpts() { return this.estados.map(e => ({ value: e.value, label: this.i18n.tagLabel(e.value) })); }
 
   previewText(texto: string): string {
     const flat = texto.replace(/\n/g, ' ').substring(0, 60);
@@ -363,7 +366,7 @@ export class NuevaPostulacionComponent implements OnInit {
       await this.clipboard.copy(items[i]);
       if (i < items.length - 1) await new Promise(r => setTimeout(r, 700));
     }
-    this.dialog.toast(`${items.length} mensajes copiados al portapapeles`);
+    this.dialog.toast(this.i18n.t('np.copied', { count: items.length }));
   }
 
   guardarPostulacion() {
@@ -380,7 +383,7 @@ export class NuevaPostulacionComponent implements OnInit {
     }).subscribe({
       next: () => {
         this.shared.historialRefresh.update(v => v + 1);
-        this.dialog.toast('Postulación guardada');
+        this.dialog.toast(this.i18n.t('np.saved'));
         this.selected.set([]);
         this.dynamicFields.set([]);
         this.fieldValues.set({});
@@ -393,7 +396,7 @@ export class NuevaPostulacionComponent implements OnInit {
         this.contactoEmpleado = '';
         window.scrollTo({ top: 0, behavior: 'smooth' });
       },
-      error: () => this.dialog.toast('Error al guardar la postulación'),
+      error: () => this.dialog.toast(this.i18n.t('np.saveError')),
     });
   }
 }
