@@ -6,7 +6,7 @@ import { SharedStateService } from '../../services/shared-state.service';
 import { ConfigEntry, Categoria, Idioma, Tag } from '../../models/interfaces';
 import { I18nService } from '../../services/i18n.service';
 
-type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags';
+type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags' | 'backup';
 
 @Component({
   selector: 'app-configuracion',
@@ -113,6 +113,18 @@ type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags';
               </div>
             }
           }
+        </div>
+      }
+
+      <!-- BACKUP -->
+      @if (activeSection() === 'backup') {
+        <div>
+          <p class="text-sm mb-4" style="opacity: 0.55;">{{ i18n.t('backup.intro') }}</p>
+          <div class="flex flex-col sm:flex-row gap-2">
+            <button class="btn btn-primary" (click)="exportBackup()">⬇️ {{ i18n.t('backup.export') }}</button>
+            <button class="btn btn-outline" (click)="fileInput.click()">⬆️ {{ i18n.t('backup.import') }}</button>
+            <input #fileInput type="file" accept="application/json,.json" style="display:none;" (change)="onFileSelected($event)" />
+          </div>
         </div>
       }
     </div>
@@ -227,6 +239,7 @@ export class ConfiguracionComponent implements OnInit {
     { id: 'categorias', labelKey: 'cfg.section.categorias' },
     { id: 'idiomas', labelKey: 'cfg.section.idiomas' },
     { id: 'tags', labelKey: 'cfg.section.tags' },
+    { id: 'backup', labelKey: 'backup.section' },
   ];
 
   private allTemplates: any[] = [];
@@ -376,6 +389,53 @@ export class ConfiguracionComponent implements OnInit {
     const ok = await this.dialog.confirm(this.i18n.t('cfg.delIdioma'));
     if (!ok) return;
     this.api.deleteIdioma(id).subscribe(() => { this.api.getIdiomas().subscribe(d => { this.idiomas.set(d); this.updateAvailableIdiomas(); }); this.shared.idiomasRefresh.update(v => v + 1); });
+  }
+
+  // ── BACKUP ──
+  exportBackup() {
+    this.api.exportBackup().subscribe((data) => {
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `postulatool-backup-${Date.now()}.json`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+      this.dialog.toast(this.i18n.t('backup.exportDone'));
+    });
+  }
+
+  onFileSelected(e: Event) {
+    const input = e.target as HTMLInputElement;
+    const file = input.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = async () => {
+      try {
+        const data = JSON.parse(reader.result as string);
+        const ok = await this.dialog.confirm(this.i18n.t('backup.importConfirm'));
+        if (!ok) { input.value = ''; return; }
+        this.api.importBackup(data).subscribe({
+          next: () => {
+            this.dialog.toast(this.i18n.t('backup.importDone'));
+            this.shared.configRefresh.update(v => v + 1);
+            this.shared.categoriasRefresh.update(v => v + 1);
+            this.shared.idiomasRefresh.update(v => v + 1);
+            this.shared.tagsRefresh.update(v => v + 1);
+            this.shared.templatesRefresh.update(v => v + 1);
+            this.shared.historialRefresh.update(v => v + 1);
+            this.initData();
+          },
+          error: () => this.dialog.toast(this.i18n.t('backup.importError')),
+        });
+      } catch {
+        this.dialog.toast(this.i18n.t('backup.importError'));
+      }
+      input.value = '';
+    };
+    reader.readAsText(file);
   }
 
   // ── TAGS ──

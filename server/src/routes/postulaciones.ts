@@ -4,9 +4,16 @@ import db from '../db';
 const router = Router();
 
 router.get('/', (req: Request, res: Response) => {
-  const { empresa, categoria_id } = req.query;
+  const { empresa, categoria_id, trashed } = req.query;
   let sql = 'SELECT * FROM postulaciones WHERE 1=1';
   const params: any[] = [];
+
+  // Papelera: excluir borradas por defecto; `?trashed=1` devuelve solo borradas.
+  if (trashed === '1') {
+    sql += ' AND deleted_at IS NOT NULL';
+  } else {
+    sql += ' AND deleted_at IS NULL';
+  }
 
   if (empresa) {
     sql += ' AND empresa LIKE ?';
@@ -145,13 +152,32 @@ router.put('/:id', (req: Request, res: Response) => {
 });
 
 router.delete('/:id', (req: Request, res: Response) => {
-  const stmt = db.prepare('DELETE FROM postulaciones WHERE id = ?');
-  const result = stmt.run(req.params.id);
-  if (result.changes === 0) {
-    res.status(404).json({ error: 'Postulación no encontrada' });
+  const { id } = req.params;
+  const existing = db.prepare('SELECT * FROM postulaciones WHERE id = ?').get(id) as any;
+  if (!existing) { res.status(404).json({ error: 'Postulación no encontrada' }); return; }
+
+  const mode = req.query.mode === 'hard' ? 'hard' : 'soft';
+  if (mode === 'hard') {
+    db.prepare('DELETE FROM postulaciones WHERE id = ?').run(id);
+    res.json({ ok: true, mode: 'hard' });
     return;
   }
-  res.json({ ok: true });
+  // soft: mover a la papelera
+  db.prepare('UPDATE postulaciones SET deleted_at = datetime(\'now\') WHERE id = ?').run(id);
+  res.json({ ok: true, mode: 'soft' });
+});
+
+// Restaurar desde la papelera
+router.post('/:id/restore', (req: Request, res: Response) => {
+  const existing = db.prepare('SELECT * FROM postulaciones WHERE id = ?').get(req.params.id) as any;
+  if (!existing) { res.status(404).json({ error: 'Postulación no encontrada' }); return; }
+  db.prepare('UPDATE postulaciones SET deleted_at = NULL WHERE id = ?').run(req.params.id);
+  const row = db.prepare('SELECT * FROM postulaciones WHERE id = ?').get(req.params.id) as any;
+  res.json({
+    ...row,
+    template_ids: JSON.parse(row.template_ids || '[]'),
+    valores_usados: JSON.parse(row.valores_usados || '{}'),
+  });
 });
 
 export default router;

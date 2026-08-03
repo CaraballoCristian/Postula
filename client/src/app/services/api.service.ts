@@ -91,9 +91,12 @@ export class ApiService {
   }
 
   // ── Postulaciones ──
-  getPostulaciones(filters?: { empresa?: string; categoria_id?: number }): Observable<Postulacion[]> {
+  getPostulaciones(filters?: { empresa?: string; categoria_id?: number; trashed?: boolean }): Observable<Postulacion[]> {
     let params: any = {};
-    if (filters) params = filters;
+    if (filters) {
+      params = { ...filters };
+      if (params.trashed !== undefined) { params.trashed = params.trashed ? '1' : '0'; }
+    }
     return this.http.get<Postulacion[]>(`${this.base}/postulaciones`, { params });
   }
   createPostulacion(data: PostulacionPayload): Observable<Postulacion> {
@@ -102,7 +105,18 @@ export class ApiService {
   updatePostulacion(id: number, data: Partial<PostulacionPayload>): Observable<Postulacion> {
     return this.http.put<Postulacion>(`${this.base}/postulaciones/${id}`, data);
   }
-  deletePostulacion(id: number): Observable<any> {
-    return this.http.delete(`${this.base}/postulaciones/${id}`);
+  deletePostulacion(id: number, mode?: 'soft' | 'hard'): Observable<any> {
+    return this.http.delete(`${this.base}/postulaciones/${id}`, mode === 'hard' ? { params: { mode: 'hard' } } : {});
+  }
+  restorePostulacion(id: number): Observable<Postulacion> {
+    return this.http.post<Postulacion>(`${this.base}/postulaciones/${id}/restore`, {});
+  }
+
+  // ── Backup (export / import) ──
+  exportBackup(): Observable<any> {
+    return this.http.get(`${this.base}/backup/export`, { responseType: 'json' });
+  }
+  importBackup(data: any): Observable<any> {
+    return this.http.post(`${this.base}/backup/import`, { data });
   }
 }

@@ -89,7 +89,9 @@ export const es = {
   'hist.field.contactoEmpleado': 'Contacto empleado',
   'hist.field.notas': 'Notas',
   'hist.bulkConfirm': '¿Cambiar estado de {{count}} postulaciones a "{{estado}}"?',
+  'hist.bulkDeleteConfirm': '¿Enviar {{count}} postulaciones a la papelera?',
   'hist.bulkDone': '{{count}} postulaciones actualizadas',
+  'hist.bulkDeleteDone': '{{count}} postulaciones enviadas a la papelera',
   'hist.deleteConfirm': '¿Eliminar esta postulación?',
 
   // editor templates
@@ -157,6 +159,25 @@ export const es = {
   'cfg.deleteTagSimple': '¿Eliminar la etiqueta "{{tag}}"?',
   'cfg.sinOtrasEtiquetas': 'No hay otras etiquetas para asignar. Creá una antes de eliminar.',
   'cfg.elegiDestino': 'Elegí una etiqueta destino',
+
+  // backup
+  'backup.section': 'Backup',
+  'backup.intro': 'Descargá o restaurá una copia completa de tus datos.',
+  'backup.export': 'Exportar datos',
+  'backup.import': 'Restaurar backup',
+  'backup.exportDone': 'Backup exportado',
+  'backup.importConfirm': '¿Importar este backup? Se fusionarán los datos con la base actual (por ID).',
+  'backup.importDone': 'Backup importado',
+  'backup.importError': 'Error al importar el backup',
+
+  // papelera
+  'pap.ver': 'Papelera',
+  'pap.vaciar': 'Vaciar papelera',
+  'pap.vaciarConfirm': '¿Eliminar definitivamente todas las postulaciones de la papelera?',
+  'pap.restore': 'Restaurar',
+  'pap.empty': 'La papelera está vacía.',
+  'pap.eliminada': 'Postulación eliminada',
+  'pap.delHard': 'Eliminar definitivamente',
 };
 
 export type TR = keyof typeof es;

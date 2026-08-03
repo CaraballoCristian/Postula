@@ -42,6 +42,7 @@ export interface Postulacion {
   favorito: number;
   fecha: string;
   created_at: string;
+  deleted_at?: string | null;
 }
 
 export const TIPOS_MENSAJE: Template['tipo'][] = ['email', 'mensaje_empresa', 'mensaje_recruiter'];

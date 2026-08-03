@@ -51,11 +51,13 @@ cd client && npm run build
 - 🌍 **Multi-language & multi-category templates** — different tone per role (Tech, Management) and language (ESP/ENG)
 - 📋 **Filterable application history** — search, sort and filter by category, language and status tag
 - ⭐ **Favorites, notes and links** per application
-- 🏷️ **Custom status tags** — create, rename (with propagation) and delete (with mandatory reassignment)
+- 🏷️ **Custom status tags** — create, rename (with propagation) and delete (with mandatory reassignment). The status column is a real foreign key to `tags` (delete is `RESTRICT` when in use, rename cascades to applications)
 - 🔄 **Bulk status updates** — change the status of multiple applications at once
+- 🗑️ **Trash (soft delete)** — deleted applications go to a trash, from where they can be restored or permanently purged
+- 💾 **Backup / Restore** — export the full database as JSON and restore/import it from the Settings → Backup tab
 - 📎 **One-click copy** — copy individual messages or all generated messages at once
 - 🎨 **Custom accent color & dark/light theme**
-- 🛠️ **Idempotent DB migrations** — including a repair routine for a legacy column-shift corruption bug, verified against a backup copy before touching the real database
+- 🛠️ **Versioned DB migrations** — schema tracked via SQLite `user_version`, with each migration applied once and idempotently (structural guards so re-running is a no-op), plus a repair routine for a legacy column-shift corruption bug verified against a backup before touching the real database
 
 ---
 
@@ -115,9 +117,9 @@ PostulaTool/
 
 - `categorias` — application categories (e.g. Tech, Management)
 - `templates` — message templates by category, language and type (`email` / `mensaje_empresa` / `mensaje_recruiter`)
-- `postulaciones` — each application: company, offer, contact, generated messages, status, favorite, notes, links
+- `postulaciones` — each application: company, offer, contact, generated messages, status (FK→`tags`), favorite, notes, links, soft-delete flag (`deleted_at`)
 - `idiomas` — supported languages
-- `tags` — status tags (color-coded, renameable with propagation, deletable with mandatory reassignment)
+- `tags` — status tags (color-coded, rename with `ON UPDATE CASCADE`, delete with `ON DELETE RESTRICT`)
 - `config` — user profile defaults used to auto-fill templates
 
 ---
@@ -130,7 +132,7 @@ An early legacy migration copied rows positionally (`INSERT ... SELECT *`), whic
 - Writing two idempotent repair queries, validated against a backup copy before running on the real database
 - Rebuilding all migrations to insert by column name instead of by position
 
-This ended up shaping most of `db.ts` — schema, seeding and repair all run idempotently on every server start.
+Schema evolution now uses **PRAGMA `user_version`**: `db.ts` defines an ordered list of versioned migrations (`addMigration`), applies only the pending ones inside a single transaction, and bumps `user_version` after each step. Every migration is written with structural guards (`hasColumn`, `hasCheck`) so it acts as a no-op if its change is already present.
 
 ---
 

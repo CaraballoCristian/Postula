@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed, effect } from '@angular/core';
+import { Component, OnInit, signal, computed, effect, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
 import { ClipboardService } from '../../services/clipboard.service';
@@ -88,11 +88,14 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
             </select>
             @if (selectedIds().size > 0) {
               <button class="btn btn-md h-full" style="background: #dc2626; color: #fff;" (click)="applyBulk()">{{ i18n.t('hist.aplicarA', { count: selectedIds().size }) }}</button>
+              <button class="btn btn-md h-full" style="background: #6b7280; color: #fff;" (click)="bulkDelete()" title="{{ i18n.t('pap.ver') }}">🗑️</button>
             }
           </div>
         }
 
         <span class="text-xs ml-auto" style="opacity: 0.4;">{{ i18n.t('hist.resultado', { count: filteredCount() }) }}</span>
+
+        <button class="toggle-pill" [class.active]="trashMode()" [title]="i18n.t('pap.ver')" (click)="toggleTrash()">🗑️</button>
 
         @if (selectionMode()) {
           <div class="flex sm:hidden flex-col gap-2 w-full">
@@ -104,6 +107,7 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
             </div>
             @if (selectedIds().size > 0) {
               <button class="btn btn-sm py-2" style="background: #dc2626; color: #fff; flex: 1;" (click)="applyBulk()">{{ i18n.t('hist.aplicarA', { count: selectedIds().size }) }}</button>
+              <button class="btn btn-sm py-2" style="background: #6b7280; color: #fff;" (click)="bulkDelete()" title="{{ i18n.t('pap.ver') }}">🗑️</button>
             }
           </div>
         }
@@ -116,8 +120,15 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
         <span class="loader"></span> {{ i18n.t('common.loading') }}
       </div>
     } @else if (postulaciones().length === 0) {
-      <div class="card text-center py-12" style="opacity: 0.35;">{{ i18n.t('hist.sinPostulaciones') }}</div>
+      <div class="card flex items-center justify-center py-12" style="opacity: 0.35;">
+        <span>{{ trashMode() ? i18n.t('pap.empty') : i18n.t('hist.sinPostulaciones') }}</span>
+      </div>
     } @else {
+      @if (trashMode()) {
+        <div class="flex justify-end mb-2">
+          <button class="btn btn-outline btn-sm" (click)="emptyTrash()">{{ i18n.t('pap.vaciar') }}</button>
+        </div>
+      }
       <div class="card" style="padding: 0;">
         <div class="overflow-x-auto">
           <table class="w-full text-xs">
@@ -167,9 +178,14 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
                   </td>
                   <td class="px-3 py-2.5 text-right" style="border-left: 1px solid var(--border);">
                     <div class="flex gap-1 justify-end">
-                      <button class="btn btn-ghost btn-sm" (click)="viewPost(p.id)" [title]="i18n.t('hist.verMensajes')">👁</button>
-                      <button class="btn btn-ghost btn-sm" (click)="editPost(p)" [title]="i18n.t('common.edit')">✏️</button>
-                      <button class="btn btn-ghost btn-sm" (click)="deletePost(p.id)" [title]="i18n.t('common.delete')">🗑️</button>
+                      @if (trashMode()) {
+                        <button class="btn btn-ghost btn-sm" (click)="restorePost(p.id)" [title]="i18n.t('pap.restore')">↩️</button>
+                        <button class="btn btn-ghost btn-sm" (click)="deleteForGood(p.id)" [title]="i18n.t('pap.delHard')">🗑️</button>
+                      } @else {
+                        <button class="btn btn-ghost btn-sm" (click)="viewPost(p.id)" [title]="i18n.t('hist.verMensajes')">👁</button>
+                        <button class="btn btn-ghost btn-sm" (click)="editPost(p)" [title]="i18n.t('common.edit')">✏️</button>
+                        <button class="btn btn-ghost btn-sm" (click)="deletePost(p.id)" [title]="i18n.t('common.delete')">🗑️</button>
+                      }
                     </div>
                   </td>
                 </tr>
@@ -327,6 +343,12 @@ export class HistorialComponent implements OnInit {
     document.addEventListener('click', () => this.openDropdown.set(null));
   }
 
+  @HostListener('document:keydown.escape')
+  onEsc() {
+    if (this.editModal()) { this.closeEditModal(); return; }
+    if (this.expandedId()) { this.expandedId.set(null); this.expandedMsg.set(null); return; }
+  }
+
   private persistFilters() {
     const data = {
       cat: [...this.checkedCategorias()],
@@ -361,7 +383,7 @@ export class HistorialComponent implements OnInit {
     this.inited = true;
   }
 
-  load() { this.api.getPostulaciones().subscribe(d => this.postulaciones.set(d)); }
+  load() { this.api.getPostulaciones({ trashed: this.trashMode() }).subscribe(d => this.postulaciones.set(d)); }
 
   loadCategorias(onDone?: () => void) {
     this.api.getCategorias().subscribe(d => {
@@ -425,6 +447,30 @@ export class HistorialComponent implements OnInit {
   catNombre(id: number) { return this.catNombres[id] ? this.i18n.categoriaLabel(this.catNombres[id]) : ''; }
   estadoLabel(v: string) { return v === this.OTRAS ? this.i18n.t('hist.sinEtiqueta') : this.i18n.tagLabel(v); }
   estadoColor(v: string) { return this.estados.find(e => e.value === v)?.color || 'var(--surface-hover)'; }
+
+  // ── Papelera ──
+  trashMode = signal(false);
+  toggleTrash() {
+    this.trashMode.update(m => !m);
+    this.load();
+  }
+  async restorePost(id: number) {
+    this.api.restorePostulacion(id).subscribe(() => this.load());
+  }
+  async deleteForGood(id: number) {
+    const ok = await this.dialog.confirm(this.i18n.t('pap.delHard'));
+    if (!ok) return;
+    this.api.deletePostulacion(id, 'hard').subscribe(() => this.load());
+  }
+  async emptyTrash() {
+    const ok = await this.dialog.confirm(this.i18n.t('pap.vaciarConfirm'));
+    if (!ok) return;
+    const trashed = await new Promise<Postulacion[]>(resolve => this.api.getPostulaciones({ trashed: true }).subscribe(resolve));
+    for (const p of trashed) {
+      await new Promise<void>(r => this.api.deletePostulacion(p.id, 'hard').subscribe({ next: () => r(), error: () => r() }));
+    }
+    this.load();
+  }
 
   toggleDropdown(type: 'cat' | 'est' | 'idioma') {
     this.openDropdown.update(v => v === type ? null : type);
@@ -549,6 +595,25 @@ export class HistorialComponent implements OnInit {
       });
     }
     this.dialog.toast(this.i18n.t('hist.bulkDone', { count: done }));
+    this.selectedIds.set(new Set());
+    this.selectionMode.set(false);
+    this.load();
+  }
+
+  async bulkDelete() {
+    const count = this.selectedIds().size;
+    if (count === 0) return;
+    const ok = await this.dialog.confirm(this.i18n.t('hist.bulkDeleteConfirm', { count }));
+    if (!ok) return;
+
+    const ids = [...this.selectedIds()];
+    let done = 0;
+    for (const id of ids) {
+      await new Promise<void>(resolve => {
+        this.api.deletePostulacion(id).subscribe({ next: () => { done++; resolve(); }, error: () => resolve() });
+      });
+    }
+    this.dialog.toast(this.i18n.t('hist.bulkDeleteDone', { count: done }));
     this.selectedIds.set(new Set());
     this.selectionMode.set(false);
     this.load();

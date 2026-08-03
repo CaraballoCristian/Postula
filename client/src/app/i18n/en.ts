@@ -91,7 +91,9 @@ export const en: Record<TR, string> = {
   'hist.field.contactoEmpleado': 'Recruiter contact',
   'hist.field.notas': 'Notes',
   'hist.bulkConfirm': 'Change status of {{count}} applications to "{{estado}}"?',
+  'hist.bulkDeleteConfirm': 'Send {{count}} applications to the trash?',
   'hist.bulkDone': '{{count}} applications updated',
+  'hist.bulkDeleteDone': '{{count}} applications sent to trash',
   'hist.deleteConfirm': 'Delete this application?',
 
   // editor templates
@@ -159,4 +161,23 @@ export const en: Record<TR, string> = {
   'cfg.deleteTagSimple': 'Delete the label "{{tag}}"?',
   'cfg.sinOtrasEtiquetas': 'There are no other labels to assign. Create one before deleting.',
   'cfg.elegiDestino': 'Choose a destination label',
+
+  // backup
+  'backup.section': 'Backup',
+  'backup.intro': 'Download or restore a full copy of your data.',
+  'backup.export': 'Export data',
+  'backup.import': 'Restore backup',
+  'backup.exportDone': 'Backup exported',
+  'backup.importConfirm': 'Import this backup? Data will be merged with the current database (by ID).',
+  'backup.importDone': 'Backup imported',
+  'backup.importError': 'Error importing backup',
+
+  // trash
+  'pap.ver': 'Trash',
+  'pap.vaciar': 'Empty trash',
+  'pap.vaciarConfirm': 'Permanently delete all applications in the trash?',
+  'pap.restore': 'Restore',
+  'pap.empty': 'The trash is empty.',
+  'pap.eliminada': 'Application deleted',
+  'pap.delHard': 'Delete permanently',
 };
