@@ -457,6 +457,38 @@ addMigration('normalizar variables de datos personales legacy', () => {
   }
 });
 
+// ── v16: normalización de empresas (empresas como fuente de verdad del link) ──
+addMigration('normalización de empresas (empresas + backfill)', () => {
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS empresas (
+      id INTEGER PRIMARY KEY AUTOINCREMENT,
+      nombre TEXT NOT NULL,
+      link TEXT NOT NULL DEFAULT '',
+      user_id INTEGER,
+      created_at TEXT NOT NULL DEFAULT (datetime('now')),
+      UNIQUE (user_id, nombre)
+    );
+  `);
+
+  // Backfill: una fila por (user_id, empresa) distinta existente en postulaciones.
+  db.prepare(`
+    INSERT OR IGNORE INTO empresas (user_id, nombre)
+    SELECT DISTINCT user_id, empresa FROM postulaciones
+    WHERE empresa <> '' AND user_id IS NOT NULL
+  `).run();
+
+  // Link: el de la postulación más reciente de esa empresa que tenga link.
+  db.prepare(`
+    UPDATE empresas SET link = COALESCE((
+      SELECT p.link_empresa FROM postulaciones p
+      WHERE p.user_id = empresas.user_id AND p.empresa = empresas.nombre
+        AND p.link_empresa <> ''
+      ORDER BY p.created_at DESC, p.id DESC LIMIT 1
+    ), '')
+    WHERE link = ''
+  `).run();
+});
+
 /** Ejecuta las migraciones pendientes y avanza `user_version`. */
 export function initDB() {
   const from = userVersion();

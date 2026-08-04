@@ -11,6 +11,7 @@ import postulacionesRouter from './routes/postulaciones';
 import configRouter from './routes/config';
 import idiomasRouter from './routes/idiomas';
 import tagsRouter from './routes/tags';
+import empresasRouter from './routes/empresas';
 import backupRouter from './routes/backup';
 
 const app = express();
@@ -42,6 +43,7 @@ app.use('/api/postulaciones', postulacionesRouter);
 app.use('/api/config', configRouter);
 app.use('/api/idiomas', idiomasRouter);
 app.use('/api/tags', tagsRouter);
+app.use('/api/empresas', empresasRouter);
 app.use('/api/backup', backupRouter);
 
 app.get('/api/health', (_req, res) => {

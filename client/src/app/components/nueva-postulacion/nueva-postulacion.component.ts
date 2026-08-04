@@ -5,7 +5,7 @@ import { ApiService } from '../../services/api.service';
 import { ClipboardService } from '../../services/clipboard.service';
 import { DialogService } from '../../services/dialog.service';
 import { SharedStateService } from '../../services/shared-state.service';
-import { Categoria, Template, TIPO_ICONS, TIPOS_MENSAJE, ESTADOS, Idioma, Tag } from '../../models/interfaces';
+import { Categoria, Template, TIPO_ICONS, TIPOS_MENSAJE, ESTADOS, Idioma, Tag, Empresa } from '../../models/interfaces';
 import { I18nService } from '../../services/i18n.service';
 
 interface SelectedTemplate {
@@ -79,7 +79,22 @@ interface SelectedTemplate {
             @for (field of dynamicFields(); track field.key) {
               <div>
                 <label class="text-xs block mb-1" style="opacity: 0.5;">{{ labelFromKey(field.key) }}</label>
-                <input [ngModel]="fieldValues()[field.key] || ''" (ngModelChange)="setField(field.key, $event)" [placeholder]="labelFromKey(field.key)" [style.border-color]="fieldErrors().has(field.key) ? '#ef4444' : ''" />
+                @if (field.key === 'empresa') {
+                  <div class="flex items-center gap-2">
+                    <div class="flex-1">
+                      <app-dropdown
+                        id="postEmpresa"
+                        [selected]="fieldValues()['empresa'] || ''"
+                        (selectedChange)="onEmpresaSelected($event)"
+                        [options]="empresaOpts()"
+                        [placeholder]="i18n.t('np.selectEmpresa')"
+                      />
+                    </div>
+                    <button class="btn btn-outline" style="flex-shrink: 0; padding: 0.4rem 0.75rem;" (click)="openEmpresaModal()" [title]="i18n.t('np.crearEmpresa')">＋</button>
+                  </div>
+                } @else {
+                  <input [ngModel]="fieldValues()[field.key] || ''" (ngModelChange)="setField(field.key, $event)" [placeholder]="labelFromKey(field.key)" [style.border-color]="fieldErrors().has(field.key) ? '#ef4444' : ''" />
+                }
                 @if (fieldErrors().has(field.key)) { <span class="text-xs" style="color: #ef4444;">{{ i18n.t('common.required') }}</span> }
               </div>
             }
@@ -108,7 +123,7 @@ interface SelectedTemplate {
             </div>
             <div class="col-span-2">
               <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('np.notas') }}</label>
-              <textarea [(ngModel)]="notas" rows="2" class="text-sm" [placeholder]="i18n.t('np.notasPh')"></textarea>
+              <textarea [(ngModel)]="notas" rows="2" class="text-sm" style="resize: none;" [placeholder]="i18n.t('np.notasPh')"></textarea>
             </div>
           </div>
         }
@@ -139,6 +154,29 @@ interface SelectedTemplate {
         </div>
       }
       }
+
+      <!-- CREAR EMPRESA MODAL -->
+      @if (empresaModalOpen()) {
+        <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[10vh]" style="background: rgba(0,0,0,0.3);">
+          <div class="card w-full max-w-sm mx-4 animate-fade-in" (click)="$event.stopPropagation()">
+            <h3 class="text-base font-semibold mb-4">{{ i18n.t('np.crearEmpresa') }}</h3>
+            <div class="space-y-3">
+              <div>
+                <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('np.empresaNombre') }}</label>
+                <input [(ngModel)]="empresaModalNombre" class="text-sm" [placeholder]="i18n.t('np.empresaNamePh')" />
+              </div>
+              <div>
+                <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('np.empresaLink') }}</label>
+                <input [(ngModel)]="empresaModalLink" class="text-sm" [placeholder]="i18n.t('np.empresaLinkPh')" />
+              </div>
+            </div>
+            <div class="flex justify-end gap-2 mt-5">
+              <button class="btn btn-outline" (click)="closeEmpresaModal()">{{ i18n.t('common.cancel') }}</button>
+              <button class="btn btn-primary" (click)="crearEmpresa()">{{ i18n.t('common.create') }}</button>
+            </div>
+          </div>
+        </div>
+      }
     </div>
   `,
 })
@@ -165,6 +203,14 @@ export class NuevaPostulacionComponent implements OnInit {
   estados: { value: string; label: string }[] = ESTADOS.map(e => ({ value: e.value, label: e.label }));
   private configKeys: Record<string, string> = {};
 
+  // ── Empresas ──
+  empresas = signal<Empresa[]>([]);
+  selectedEmpresaId: number | null = null;
+  empresaLinkOriginal = '';
+  empresaModalOpen = signal(false);
+  empresaModalNombre = '';
+  empresaModalLink = '';
+
   private inited = false;
   private templatesInitialized = false;
 
@@ -182,18 +228,66 @@ export class NuevaPostulacionComponent implements OnInit {
     effect(() => { void shared.tagsRefresh(); if (this.inited) this.loadTags(); });
     effect(() => { void shared.categoriasRefresh(); if (this.inited) this.loadCategorias(); });
     effect(() => { void shared.idiomasRefresh(); if (this.inited) this.loadIdiomas(); });
+    effect(() => { void shared.empresasRefresh(); if (this.inited) this.loadEmpresas(); });
     effect(() => { void shared.configRefresh(); if (this.inited) this.reloadConfigKeys(); });
   }
 
   ngOnInit() {
     this.loading.set(true);
     let done = 0;
-    const checkDone = () => { if (++done >= 4) this.loading.set(false); };
+    const checkDone = () => { if (++done >= 5) this.loading.set(false); };
     this.loadCategorias(checkDone, true);
     this.loadIdiomas(checkDone, true);
     this.loadTags(checkDone);
     this.loadConfig(checkDone, true);
+    this.loadEmpresas(checkDone);
     this.inited = true;
+  }
+
+  loadEmpresas(onDone?: () => void) {
+    this.api.getEmpresas().subscribe(d => {
+      this.empresas.set(d);
+      onDone?.();
+    });
+  }
+
+  empresaOpts() { return this.empresas().map(e => ({ value: e.nombre, label: e.nombre })); }
+
+  onEmpresaSelected(nombre: string) {
+    const e = this.empresas().find(x => x.nombre === nombre);
+    this.setField('empresa', nombre);
+    if (e) {
+      this.selectedEmpresaId = e.id;
+      this.empresaLinkOriginal = e.link;
+      this.linkEmpresa = e.link;
+    } else {
+      this.selectedEmpresaId = null;
+      this.empresaLinkOriginal = '';
+    }
+  }
+
+  openEmpresaModal() { this.empresaModalNombre = ''; this.empresaModalLink = ''; this.empresaModalOpen.set(true); }
+  closeEmpresaModal() { this.empresaModalOpen.set(false); }
+
+  crearEmpresa() {
+    const nombre = this.empresaModalNombre.trim();
+    if (!nombre) { this.dialog.toast(this.i18n.t('common.required')); return; }
+    const link = this.empresaModalLink.trim();
+    this.api.createEmpresa({ nombre, link }).subscribe({
+      next: (e) => {
+        this.empresas.update(list => [...list, e].sort((a, b) => a.nombre.localeCompare(b.nombre)));
+        this.shared.empresasRefresh.update(v => v + 1);
+        this.selectedEmpresaId = e.id;
+        this.empresaLinkOriginal = e.link;
+        this.linkEmpresa = e.link;
+        this.setField('empresa', e.nombre);
+        this.closeEmpresaModal();
+      },
+      error: (err: any) => {
+        if (err?.error?.error === 'EMPRESA_EXISTE') this.dialog.toast(this.i18n.t('np.empresaExiste'));
+        else this.dialog.toast(this.i18n.t('common.error.save'));
+      },
+    });
   }
 
   loadCategorias(onDone?: () => void, initial = false) {
@@ -369,13 +463,37 @@ export class NuevaPostulacionComponent implements OnInit {
     this.dialog.toast(this.i18n.t('np.copied', { count: items.length }));
   }
 
-  guardarPostulacion() {
+  async guardarPostulacion() {
     const sel = this.selected().filter(s => s.template);
     const vals = this.fieldValues();
+    const nombre = vals['empresa'] || '';
     const byTipo: Record<string, string | null> = { email: null, mensaje_empresa: null, mensaje_recruiter: null };
     for (const r of this.resultados()) byTipo[r.tipo] = r.texto;
+
+    if (nombre) {
+      if (this.selectedEmpresaId != null) {
+        if (this.linkEmpresa !== this.empresaLinkOriginal) {
+          const ok = await this.dialog.confirm(this.i18n.t('hist.overwriteLinkMsg', {
+            empresa: nombre,
+            from: this.empresaLinkOriginal || '—',
+            to: this.linkEmpresa || '—',
+          }));
+          if (!ok) { this.dialog.toast(this.i18n.t('hist.overwriteCanceled')); return; }
+          await new Promise<void>(resolve => {
+            this.api.updateEmpresa(this.selectedEmpresaId!, { link: this.linkEmpresa }).subscribe({ next: () => resolve(), error: () => resolve() });
+          });
+          this.shared.empresasRefresh.update(v => v + 1);
+        }
+      } else {
+        await new Promise<void>(resolve => {
+          this.api.createEmpresa({ nombre, link: this.linkEmpresa }).subscribe({ next: () => resolve(), error: () => resolve() });
+        });
+        this.shared.empresasRefresh.update(v => v + 1);
+      }
+    }
+
     this.api.createPostulacion({
-      empresa: vals['empresa'] || '', oferta_laboral: vals['oferta_laboral'] || '', categoria_id: this.categoriaId, idioma: this.idioma,
+      empresa: nombre, oferta_laboral: vals['oferta_laboral'] || '', categoria_id: this.categoriaId, idioma: this.idioma,
       nombre_empleado: vals['nombre_empleado'] || '', puesto_empleado: vals['puesto_empleado'] || '',
       template_ids: sel.map(s => s.template!.id), valores_usados: vals,
       resultado_email: byTipo['email'], resultado_empresa: byTipo['mensaje_empresa'], resultado_recruiter: byTipo['mensaje_recruiter'],
@@ -394,6 +512,8 @@ export class NuevaPostulacionComponent implements OnInit {
         this.estado = 'solicitado';
         this.linkEmpresa = '';
         this.contactoEmpleado = '';
+        this.selectedEmpresaId = null;
+        this.empresaLinkOriginal = '';
         window.scrollTo({ top: 0, behavior: 'smooth' });
       },
       error: () => this.dialog.toast(this.i18n.t('np.saveError')),
