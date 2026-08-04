@@ -99,6 +99,17 @@ export interface Idioma {
   created_at: string;
 }
 
+export interface User {
+  id: number;
+  email: string;
+  created_at: string;
+}
+
+export interface AuthResponse {
+  token: string;
+  user: User;
+}
+
 export interface Tag {
   id: number;
   nombre: string;

@@ -120,8 +120,8 @@ interface SelectedTemplate {
 
       @if (resultados().length > 0) {
         <div #resultadosSection class="space-y-1">
-          @for (res of resultados(); track res.tipo) {
-            <div class="animate-fade-in" style="border: 1px solid var(--border); border-radius: 0.5rem; overflow: hidden;">
+          @for (res of resultados(); track res.tipo; let i = $index) {
+            <div class="animate-stagger" [style.animation-delay]="stagger(i)" style="border: 1px solid var(--border); border-radius: 0.5rem; overflow: hidden;">
               <div class="flex items-center gap-3 px-4 py-2.5 cursor-pointer" [style.background-color]="expandedResult() === res.tipo ? 'var(--surface-hover)' : 'var(--surface)'" (click)="toggleResult(res.tipo)">
                 <span class="text-sm font-medium flex-1 truncate">{{ TIPO_ICONS[res.tipo] }} {{ tipoLabel(res.tipo) }} <span class="text-xs" style="opacity: 0.35; font-weight: 400;">— {{ previewText(res.texto) }}</span></span>
                 <span class="text-xs" style="opacity: 0.4;">{{ expandedResult() === res.tipo ? '▲' : '▼' }}</span>
@@ -398,5 +398,9 @@ export class NuevaPostulacionComponent implements OnInit {
       },
       error: () => this.dialog.toast(this.i18n.t('np.saveError')),
     });
+  }
+
+  stagger(i: number): string {
+    return `${Math.min(i * 30, 300)}ms`;
   }
 }

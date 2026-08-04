@@ -1,5 +1,6 @@
 import { Component, OnInit, signal, computed, effect, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
+import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { ApiService } from '../../services/api.service';
 import { ClipboardService } from '../../services/clipboard.service';
 import { DialogService } from '../../services/dialog.service';
@@ -12,7 +13,7 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
 @Component({
   selector: 'app-historial',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, DragDropModule],
   template: `
     <!-- FILTROS + BATCH ACTIONS -->
     <div class="flex flex-col gap-2 mb-4">
@@ -80,6 +81,13 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
           {{ i18n.t('hist.seleccionMultiple') }}
         </label>
 
+        @if (!trashMode()) {
+          <div class="flex items-center gap-0.5 p-0.5 border rounded-md" style="border-color: var(--border); background: var(--surface);">
+            <button class="view-pill" [class.active]="viewMode() === 'tabla'" (click)="setView('tabla')">☰ {{ i18n.t('hist.tabla') }}</button>
+            <button class="view-pill" [class.active]="viewMode() === 'kanban'" (click)="setView('kanban')">▤ {{ i18n.t('hist.kanban') }}</button>
+          </div>
+        }
+
         @if (selectionMode()) {
           <div class="hidden sm:flex gap-2 sm:gap-3 items-center">
             <button class="toggle-pill" (click)="selectAll()">{{ i18n.t('hist.seleccionarTodo') }}</button>
@@ -129,8 +137,9 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
           <button class="btn btn-outline btn-sm" (click)="emptyTrash()">{{ i18n.t('pap.vaciar') }}</button>
         </div>
       }
+      @if (viewMode() === 'tabla' || trashMode()) {
       <div class="card" style="padding: 0;">
-        <div class="overflow-x-auto">
+        <div class="overflow-x-auto" style="overflow-y: hidden;">
           <table class="w-full text-xs">
             <thead>
               <tr style="border-bottom: 1px solid var(--border);">
@@ -144,8 +153,8 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
               </tr>
             </thead>
             <tbody>
-              @for (p of filteredSorted(); track p.id) {
-                <tr class="cursor-pointer transition-colors" style="border-bottom: 1px solid var(--border);" [style.background-color]="expandedId() === p.id ? 'var(--surface-hover)' : (hoverRow === p.id ? 'var(--surface-hover)' : 'transparent')" (mouseenter)="hoverRow = p.id" (mouseleave)="hoverRow = null">
+              @for (p of filteredSorted(); track p.id; let i = $index) {
+                <tr class="cursor-pointer transition-colors animate-stagger-row" [style.animation-delay]="stagger(i)" style="border-bottom: 1px solid var(--border);" [style.background-color]="expandedId() === p.id ? 'var(--surface-hover)' : (hoverRow === p.id ? 'var(--surface-hover)' : 'transparent')" (mouseenter)="hoverRow = p.id" (mouseleave)="hoverRow = null">
                   @if (selectionMode()) {
                     <td class="px-3 py-2.5" (click)="$event.stopPropagation()">
                       <input type="checkbox" [checked]="selectedIds().has(p.id)" (change)="toggleSelect(p.id)" class="w-3.5 h-3.5" style="accent-color: var(--accent);" />
@@ -249,6 +258,102 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
           </table>
         </div>
       </div>
+      } @else {
+      <!-- KANBAN -->
+      <div class="overflow-x-auto" style="overflow-y: hidden; padding-bottom: 8px;">
+        <div class="flex items-start gap-3" cdkDropListGroup>
+          @for (col of kanbanColumns(); track col.value; let ci = $index) {
+            <div class="kanban-col animate-stagger" [style.animation-delay]="stagger(ci)" style="min-width: 250px;">
+              <div class="flex items-center gap-2 px-2.5 py-2 rounded-t-md" style="background: var(--surface); border: 1px solid var(--border);">
+                <span class="w-2.5 h-2.5 rounded-full shrink-0" [style.background]="col.color"></span>
+                <span class="text-xs font-semibold flex-1 truncate">{{ col.label }}</span>
+                <span class="text-[10px] font-semibold rounded-full px-1.5 py-0.5" style="background: var(--surface-hover);">{{ col.items.length }}</span>
+              </div>
+              <div cdkDropList [cdkDropListDisabled]="col.value === '__otras__'" (cdkDropListDropped)="onKanbanDrop($event, col.value)" class="kanban-body">
+                @for (p of col.items; track p.id; let i = $index) {
+                  <div class="kanban-card animate-stagger" [style.animation-delay]="stagger(i)" cdkDrag [cdkDragData]="p">
+                    <div class="flex items-center justify-between gap-2">
+                      <div class="flex items-center gap-1.5 min-w-0">
+                        <span class="cursor-pointer select-none text-xs" (click)="toggleFav(p); $event.stopPropagation()" [title]="i18n.t('hist.titFavorito')">{{ p.favorito ? '⭐' : '☆' }}</span>
+                        <span class="text-xs font-semibold truncate cursor-pointer" (click)="editPost(p)" [title]="p.empresa">{{ p.empresa }}</span>
+                        @if (p.link_empresa) {
+                          <a [href]="fixUrl(p.link_empresa)" target="_blank" rel="noopener" class="no-underline shrink-0" style="color: var(--accent);" [title]="i18n.t('hist.abrirLink')">↗</a>
+                        }
+                      </div>
+                      @if (p.categoria_id) {
+                        <span class="badge kanban-badge shrink-0" style="background: var(--accent); color: #fff;">{{ catNombre(p.categoria_id) }}</span>
+                      }
+                    </div>
+                    <p class="text-xs truncate mt-1" [title]="p.oferta_laboral">{{ p.oferta_laboral || '—' }}</p>
+                    <div class="flex items-center justify-between gap-2 mt-1">
+                      <div class="flex items-center gap-1 min-w-0 truncate">
+                        @if (p.nombre_empleado) { <span class="text-xs truncate">👤 {{ p.nombre_empleado }}</span> }
+                        @if (p.contacto_empleado) {
+                          <a [href]="fixUrl(p.contacto_empleado)" target="_blank" rel="noopener" class="no-underline shrink-0" style="color: var(--accent);" [title]="i18n.t('hist.abrirLink')">↗</a>
+                        }
+                        @if (p.puesto_empleado) { <span class="text-xs truncate" style="opacity: 0.55;">— {{ p.puesto_empleado }}</span> }
+                      </div>
+                      @if (p.idioma) { <span class="text-[10px] uppercase shrink-0" style="opacity: 0.45;">{{ p.idioma }}</span> }
+                    </div>
+                    <div style="border-top: 1px solid var(--border); margin-top: 0.5rem;"></div>
+                    <div class="flex items-center justify-between pt-1.5">
+                      <span class="text-[10px]" style="opacity: 0.45;">{{ formatFecha(p.fecha) }}</span>
+                      <div class="flex items-center gap-2">
+                        <button class="btn btn-ghost btn-sm text-xs" (click)="viewPost(p.id)" [title]="i18n.t('hist.verMensajes')">👁</button>
+                        <button class="btn btn-ghost btn-sm text-xs" (click)="editPost(p)" [title]="i18n.t('common.edit')">✏️</button>
+                        <button class="btn btn-ghost btn-sm text-xs" (click)="deletePost(p.id)" [title]="i18n.t('common.delete')">🗑️</button>
+                      </div>
+                    </div>
+                    @if (expandedId() === p.id) {
+                      <div class="mt-1.5 px-2 py-1.5 space-y-1.5 text-[11px]" style="background: var(--surface-hover); border: 1px solid var(--border); border-radius: 0.375rem;">
+                        @if (p.link_empresa) { <div class="truncate"><a [href]="fixUrl(p.link_empresa)" target="_blank" rel="noopener" style="color: var(--accent);">🔗 {{ p.link_empresa }}</a></div> }
+                        @if (p.contacto_empleado) { <div class="truncate"><a [href]="fixUrl(p.contacto_empleado)" target="_blank" rel="noopener" style="color: var(--accent);">👤 {{ p.contacto_empleado }}</a></div> }
+                        @if (p.notas) { <p style="opacity: 0.6; white-space: pre-wrap;">{{ p.notas }}</p> }
+                        @for (tipo of msgTipos; track tipo) {
+                          @if (tipo === 'email' && p.resultado_email) {
+                            <div style="border: 1px solid var(--border); border-radius: 0.25rem; overflow: hidden;">
+                              <div class="flex items-center gap-2 px-2 py-1 cursor-pointer text-xs" [style.background-color]="expandedMsg() === 'email' ? 'var(--surface-hover)' : 'transparent'" (click)="toggleMsg('email')">
+                                <span class="flex-1 font-medium">✉ {{ i18n.t('hist.expEmail') }}</span>
+                                <span style="opacity: 0.4;">{{ expandedMsg() === 'email' ? '▲' : '▼' }}</span>
+                                <button class="btn btn-ghost btn-sm text-xs" (click)="copyMsg(p.resultado_email!); $event.stopPropagation()" [title]="i18n.t('hist.copy')">📋</button>
+                              </div>
+                              @if (expandedMsg() === 'email') { <div style="border-top: 1px solid var(--border);"><pre class="text-[11px] whitespace-pre-wrap font-sans leading-relaxed px-2 py-1.5" style="margin: 0;">{{ p.resultado_email }}</pre></div> }
+                            </div>
+                          }
+                          @if (tipo === 'mensaje_empresa' && p.resultado_empresa) {
+                            <div style="border: 1px solid var(--border); border-radius: 0.25rem; overflow: hidden;">
+                              <div class="flex items-center gap-2 px-2 py-1 cursor-pointer text-xs" [style.background-color]="expandedMsg() === 'mensaje_empresa' ? 'var(--surface-hover)' : 'transparent'" (click)="toggleMsg('mensaje_empresa')">
+                                <span class="flex-1 font-medium">🏢 {{ i18n.t('hist.expEmpresa') }}</span>
+                                <span style="opacity: 0.4;">{{ expandedMsg() === 'mensaje_empresa' ? '▲' : '▼' }}</span>
+                                <button class="btn btn-ghost btn-sm text-xs" (click)="copyMsg(p.resultado_empresa!); $event.stopPropagation()" [title]="i18n.t('hist.copy')">📋</button>
+                              </div>
+                              @if (expandedMsg() === 'mensaje_empresa') { <div style="border-top: 1px solid var(--border);"><pre class="text-[11px] whitespace-pre-wrap font-sans leading-relaxed px-2 py-1.5" style="margin: 0;">{{ p.resultado_empresa }}</pre></div> }
+                            </div>
+                          }
+                          @if (tipo === 'mensaje_recruiter' && p.resultado_recruiter) {
+                            <div style="border: 1px solid var(--border); border-radius: 0.25rem; overflow: hidden;">
+                              <div class="flex items-center gap-2 px-2 py-1 cursor-pointer text-xs" [style.background-color]="expandedMsg() === 'mensaje_recruiter' ? 'var(--surface-hover)' : 'transparent'" (click)="toggleMsg('mensaje_recruiter')">
+                                <span class="flex-1 font-medium">👤 {{ i18n.t('hist.expRecruiter') }}</span>
+                                <span style="opacity: 0.4;">{{ expandedMsg() === 'mensaje_recruiter' ? '▲' : '▼' }}</span>
+                                <button class="btn btn-ghost btn-sm text-xs" (click)="copyMsg(p.resultado_recruiter!); $event.stopPropagation()" [title]="i18n.t('hist.copy')">📋</button>
+                              </div>
+                              @if (expandedMsg() === 'mensaje_recruiter') { <div style="border-top: 1px solid var(--border);"><pre class="text-[11px] whitespace-pre-wrap font-sans leading-relaxed px-2 py-1.5" style="margin: 0;">{{ p.resultado_recruiter }}</pre></div> }
+                            </div>
+                          }
+                        }
+                      </div>
+                    }
+                  </div>
+                }
+                @if (col.items.length === 0) {
+                  <div class="kanban-empty">{{ i18n.t('hist.vacio') }}</div>
+                }
+              </div>
+            </div>
+          }
+        </div>
+      </div>
+      }
     }
 
     <!-- EDIT MODAL -->
@@ -281,6 +386,7 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
 })
 export class HistorialComponent implements OnInit {
   postulaciones = signal<Postulacion[]>([]);
+  viewMode = signal<'tabla' | 'kanban'>(localStorage.getItem('postulatool.hist.view') === 'kanban' ? 'kanban' : 'tabla');
   filtroGlobal = signal('');
   categorias: Categoria[] = [];
   checkedCategorias = signal<Set<number>>(new Set());
@@ -490,6 +596,34 @@ export class HistorialComponent implements OnInit {
 
   filteredCount = computed(() => this.filteredSorted().length);
 
+  setView(v: 'tabla' | 'kanban') {
+    this.viewMode.set(v);
+    localStorage.setItem('postulatool.hist.view', v);
+  }
+
+  kanbanColumns = computed(() => {
+    const known = this.estados.map(e => e.value).filter(v => v !== this.OTRAS);
+    const list = this.filteredSorted();
+    return this.estados
+      .filter(e => this.checkedEstados().has(e.value))
+      .map(e => ({
+        value: e.value,
+        label: e.label,
+        color: e.color,
+        items: list.filter(p => e.value === this.OTRAS ? !known.includes(p.estado) : p.estado === e.value),
+      }));
+  });
+
+  onKanbanDrop(event: CdkDragDrop<any[]>, targetEstado: string) {
+    if (targetEstado === this.OTRAS) return;
+    const p = event.item.data as Postulacion;
+    if (!p || p.estado === targetEstado) return;
+    this.api.updatePostulacion(p.id, { estado: targetEstado } as any).subscribe({
+      next: () => this.postulaciones.update(list => list.map(x => x.id === p.id ? { ...x, estado: targetEstado as Postulacion['estado'] } : x)),
+      error: () => this.load(),
+    });
+  }
+
   filteredSorted(): Postulacion[] {
     let list = [...this.postulaciones()];
     const q = this.filtroGlobal().toLowerCase().trim();
@@ -642,6 +776,10 @@ export class HistorialComponent implements OnInit {
   }
 
   closeEditModal() { this.editModal.set(false); this.editId = null; }
+
+  stagger(i: number): string {
+    return `${Math.min(i * 30, 300)}ms`;
+  }
 
   saveEdit() {
     if (this.editId === null) return;

@@ -57,8 +57,8 @@ import { I18nService } from "../../services/i18n.service";
     }
 
     <div class="space-y-1">
-      @for (t of templates(); track t.id) {
-        <div class="card flex items-center gap-3 animate-fade-in">
+      @for (t of templates(); track t.id; let i = $index) {
+        <div class="card flex items-center gap-3 animate-stagger" [style.animation-delay]="stagger(i)">
           <div class="flex-1 min-w-0">
             <div class="flex items-center gap-2 mb-0.5">
               <span class="font-medium text-sm truncate">{{ t.nombre }}</span>
@@ -422,5 +422,9 @@ export class EditorTemplatesComponent implements OnInit {
       this.loadTemplates();
       this.shared.templatesRefresh.update((v) => v + 1);
     });
+  }
+
+  stagger(i: number): string {
+    return `${Math.min(i * 30, 300)}ms`;
   }
 }
