@@ -1,13 +1,27 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Categoria, Template, ConfigEntry, Postulacion, PostulacionPayload, Idioma, Tag } from '../models/interfaces';
+import { Categoria, Template, ConfigEntry, Postulacion, PostulacionPayload, Idioma, Tag, User, AuthResponse } from '../models/interfaces';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
   private base = '/api';
 
   constructor(private http: HttpClient) {}
+
+  // ── Auth ──
+  login(email: string, password: string): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.base}/auth/login`, { email, password });
+  }
+  register(email: string, password: string): Observable<AuthResponse> {
+    return this.http.post<AuthResponse>(`${this.base}/auth/register`, { email, password });
+  }
+  me(): Observable<{ user: User }> {
+    return this.http.get<{ user: User }>(`${this.base}/auth/me`);
+  }
+  changePassword(currentPassword: string, newPassword: string): Observable<{ ok: boolean }> {
+    return this.http.post<{ ok: boolean }>(`${this.base}/auth/change-password`, { currentPassword, newPassword });
+  }
 
   // ── Categorías ──
   getCategorias(): Observable<Categoria[]> {

@@ -1,16 +1,36 @@
 import db from './db';
 
-export function seed() {
-  const catCount = db.prepare('SELECT COUNT(*) as count FROM categorias').get() as { count: number };
-  if (catCount.count > 0) return;
+function getOrCreateCategoria(userId: number, nombre: string): number {
+  const existing = db.prepare('SELECT id FROM categorias WHERE user_id = ? AND nombre = ?').get(userId, nombre) as any;
+  if (existing) return existing.id;
+  return db.prepare('INSERT INTO categorias (user_id, nombre) VALUES (?, ?)').run(userId, nombre).lastInsertRowid as number;
+}
 
-  const insertCategoria = db.prepare('INSERT INTO categorias (nombre) VALUES (?)');
-  const techId = insertCategoria.run('Tech').lastInsertRowid as number;
-  const mgmtId = insertCategoria.run('Management').lastInsertRowid as number;
+function hasTemplate(userId: number, categoria_id: number, idioma: string, tipo: string, nombre: string): boolean {
+  return !!db.prepare('SELECT id FROM templates WHERE user_id = ? AND categoria_id = ? AND idioma = ? AND tipo = ? AND nombre = ?')
+    .get(userId, categoria_id, idioma, tipo, nombre);
+}
+
+function hasConfig(userId: number, clave: string): boolean {
+  return !!db.prepare('SELECT id FROM config WHERE user_id = ? AND clave = ?').get(userId, clave);
+}
+
+function hasIdioma(userId: number, nombre: string): boolean {
+  return !!db.prepare('SELECT id FROM idiomas WHERE user_id = ? AND nombre = ?').get(userId, nombre);
+}
+
+function hasTag(userId: number, nombre: string): boolean {
+  return !!db.prepare('SELECT id FROM tags WHERE user_id = ? AND nombre = ?').get(userId, nombre);
+}
+
+/** Seeds de datos por defecto para un usuario. Idempotente: no duplica si ya existen. */
+export function seedForUser(userId: number) {
+  const techId = getOrCreateCategoria(userId, 'Tech');
+  const mgmtId = getOrCreateCategoria(userId, 'Management');
 
   const insertTemplate = db.prepare(`
-    INSERT INTO templates (categoria_id, idioma, tipo, nombre, contenido, orden)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO templates (user_id, categoria_id, idioma, tipo, nombre, contenido, orden)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `);
 
   const templates = [
@@ -20,43 +40,43 @@ export function seed() {
 
 Te escribo porque vi tu perfil de {puesto_empleado} en {empresa} y me interesó mucho la oferta de {oferta_laboral} que publicaron.
 
-Soy {mi_nombre}, desarrollador con experiencia en tecnologías como TypeScript, Angular, Node.js y SQL. Actualmente estoy buscando nuevos desafíos y creo que mi perfil puede encajar bien con lo que están buscando.
+Soy {Nombre}, desarrollador con experiencia en tecnologías como TypeScript, Angular, Node.js y SQL. Actualmente estoy buscando nuevos desafíos y creo que mi perfil puede encajar bien con lo que están buscando.
 
-Te dejo mi LinkedIn por si querés chusmear: {mi_linkedin}
+Te dejo mi LinkedIn por si querés chusmear: {Linkedin}
 
 Quedo atento a cualquier comentario. ¡Gracias!
 
 Saludos,
-{mi_nombre}` },
+{Nombre}` },
 
     { cat: techId, lang: 'ESP', type: 'mensaje_empresa', name: 'Postulación Empresa Tech ES',
       content: `Estimado equipo de {empresa},
 
 Me dirijo a ustedes para postularme a la posición de {oferta_laboral} que vi publicada.
 
-Mi nombre es {mi_nombre} y cuento con experiencia en desarrollo de software, trabajando con tecnologías como TypeScript, Angular, React, Node.js y bases de datos SQL/NoSQL. En mis últimos proyectos me he enfocado en construir aplicaciones escalables y mantener buenas prácticas de código.
+Mi nombre es {Nombre} y cuento con experiencia en desarrollo de software, trabajando con tecnologías como TypeScript, Angular, React, Node.js y bases de datos SQL/NoSQL. En mis últimos proyectos me he enfocado en construir aplicaciones escalables y mantener buenas prácticas de código.
 
-Adjunto mi CV y portfolio para que puedan conocer más sobre mi trabajo: {mi_portfolio}
+Adjunto mi CV y portfolio para que puedan conocer más sobre mi trabajo: {Portfolio}
 
-Mi LinkedIn: {mi_linkedin}
+Mi LinkedIn: {Linkedin}
 
 Quedo a disposición para coordinar una entrevista. Muchas gracias por su tiempo.
 
 Saludos cordiales,
-{mi_nombre}` },
+{Nombre}` },
 
     { cat: techId, lang: 'ESP', type: 'mensaje_recruiter', name: 'Mensaje Recruiter Tech ES',
       content: `Hola {nombre_empleado}, ¿cómo estás?
 
 Te contacto porque vi que trabajás como {puesto_empleado} en {empresa} y quería consultarte si tenés alguna búsqueda activa para desarrolladores.
 
-Soy {mi_nombre}, desarrollador full-stack con foco en TypeScript, Angular y Node.js. Estoy abierto a nuevas oportunidades y me gustaría saber si hay algo que pueda encajar con mi perfil.
+Soy {Nombre}, desarrollador full-stack con foco en TypeScript, Angular y Node.js. Estoy abierto a nuevas oportunidades y me gustaría saber si hay algo que pueda encajar con mi perfil.
 
-Te dejo mi LinkedIn: {mi_linkedin}
+Te dejo mi LinkedIn: {Linkedin}
 
 ¡Gracias y buen día!
 
-{mi_nombre}` },
+{Nombre}` },
 
     // ── TECH EN ──
     { cat: techId, lang: 'ENG', type: 'email', name: 'Mail Tech EN',
@@ -64,43 +84,43 @@ Te dejo mi LinkedIn: {mi_linkedin}
 
 I'm reaching out because I saw your profile as {puesto_empleado} at {empresa} and I was really interested in the {oferta_laboral} opening you posted.
 
-I'm {mi_nombre}, a software developer with experience in TypeScript, Angular, Node.js, and SQL. I'm currently looking for new challenges and I believe my background could be a good fit for what you're looking for.
+I'm {Nombre}, a software developer with experience in TypeScript, Angular, Node.js, and SQL. I'm currently looking for new challenges and I believe my background could be a good fit for what you're looking for.
 
-Here's my LinkedIn if you'd like to take a look: {mi_linkedin}
+Here's my LinkedIn if you'd like to take a look: {Linkedin}
 
 Looking forward to hearing from you. Thanks!
 
 Best,
-{mi_nombre}` },
+{Nombre}` },
 
     { cat: techId, lang: 'ENG', type: 'mensaje_empresa', name: 'Company Application Tech EN',
       content: `Dear {empresa} team,
 
 I'm writing to apply for the {oferta_laboral} position I saw posted.
 
-My name is {mi_nombre} and I have experience in software development, working with TypeScript, Angular, React, Node.js, and SQL/NoSQL databases. In my recent projects I've focused on building scalable applications with solid code practices.
+My name is {Nombre} and I have experience in software development, working with TypeScript, Angular, React, Node.js, and SQL/NoSQL databases. In my recent projects I've focused on building scalable applications with solid code practices.
 
-Please find my CV and portfolio here: {mi_portfolio}
+Please find my CV and portfolio here: {Portfolio}
 
-My LinkedIn: {mi_linkedin}
+My LinkedIn: {Linkedin}
 
 I'm available for an interview at your convenience. Thank you for your time.
 
 Best regards,
-{mi_nombre}` },
+{Nombre}` },
 
     { cat: techId, lang: 'ENG', type: 'mensaje_recruiter', name: 'Recruiter Message Tech EN',
       content: `Hi {nombre_empleado}, how are you?
 
 I'm reaching out because I noticed you work as {puesto_empleado} at {empresa} and I wanted to ask if you have any active searches for developers at the moment.
 
-I'm {mi_nombre}, a full-stack developer focused on TypeScript, Angular, and Node.js. I'm open to new opportunities and would love to know if there's anything that might fit my profile.
+I'm {Nombre}, a full-stack developer focused on TypeScript, Angular, and Node.js. I'm open to new opportunities and would love to know if there's anything that might fit my profile.
 
-Here's my LinkedIn: {mi_linkedin}
+Here's my LinkedIn: {Linkedin}
 
 Thanks and have a great day!
 
-{mi_nombre}` },
+{Nombre}` },
 
     // ── MANAGEMENT ES ──
     { cat: mgmtId, lang: 'ESP', type: 'email', name: 'Mail Management ES',
@@ -108,46 +128,46 @@ Thanks and have a great day!
 
 Te escribo porque vi tu perfil de {puesto_empleado} en {empresa} y me interesó la oportunidad de {oferta_laboral} que tienen abierta.
 
-Soy {mi_nombre}, project manager con experiencia liderando equipos de desarrollo, gestionando stakeholders y llevando proyectos de principio a fin con metodologías ágiles.
+Soy {Nombre}, project manager con experiencia liderando equipos de desarrollo, gestionando stakeholders y llevando proyectos de principio a fin con metodologías ágiles.
 
 Creo que mi experiencia en gestión de equipos técnicos y mi enfoque en resultados puede aportar valor a {empresa}.
 
-Te dejo mi LinkedIn: {mi_linkedin}
+Te dejo mi LinkedIn: {Linkedin}
 
 Quedo atento a cualquier comentario. ¡Gracias!
 
 Saludos,
-{mi_nombre}` },
+{Nombre}` },
 
     { cat: mgmtId, lang: 'ESP', type: 'mensaje_empresa', name: 'Postulación Empresa Mgmt ES',
       content: `Estimado equipo de {empresa},
 
 Me postulo a la posición de {oferta_laboral} que vi publicada recientemente.
 
-Mi nombre es {mi_nombre} y me desempeño como project manager con experiencia en liderazgo de equipos multidisciplinarios, planificación estratégica y ejecución de proyectos de tecnología. Tengo un enfoque orientado a resultados y comunicación efectiva con stakeholders.
+Mi nombre es {Nombre} y me desempeño como project manager con experiencia en liderazgo de equipos multidisciplinarios, planificación estratégica y ejecución de proyectos de tecnología. Tengo un enfoque orientado a resultados y comunicación efectiva con stakeholders.
 
 He liderado proyectos utilizando metodologías ágiles (Scrum, Kanban) y herramientas como Jira, Notion y GitHub Projects.
 
-Mi portfolio y experiencia detallada: {mi_portfolio}
-LinkedIn: {mi_linkedin}
+Mi portfolio y experiencia detallada: {Portfolio}
+LinkedIn: {Linkedin}
 
 Quedo a disposición para una entrevista. Muchas gracias.
 
 Saludos cordiales,
-{mi_nombre}` },
+{Nombre}` },
 
     { cat: mgmtId, lang: 'ESP', type: 'mensaje_recruiter', name: 'Mensaje Recruiter Mgmt ES',
       content: `Hola {nombre_empleado}, ¿cómo estás?
 
 Te contacto porque vi que sos {puesto_empleado} en {empresa} y quería saber si tienen búsquedas activas para roles de management o liderazgo técnico.
 
-Soy {mi_nombre}, project manager con background técnico. Tengo experiencia gestionando equipos de desarrollo y coordinando proyectos end-to-end. Me interesa sumarme a un equipo donde pueda aportar desde la gestión.
+Soy {Nombre}, project manager con background técnico. Tengo experiencia gestionando equipos de desarrollo y coordinando proyectos end-to-end. Me interesa sumarme a un equipo donde pueda aportar desde la gestión.
 
-LinkedIn: {mi_linkedin}
+LinkedIn: {Linkedin}
 
 ¡Gracias y saludos!
 
-{mi_nombre}` },
+{Nombre}` },
 
     // ── MANAGEMENT EN ──
     { cat: mgmtId, lang: 'ENG', type: 'email', name: 'Mail Management EN',
@@ -155,79 +175,84 @@ LinkedIn: {mi_linkedin}
 
 I'm reaching out because I saw your profile as {puesto_empleado} at {empresa} and was interested in the {oferta_laboral} opening you have.
 
-I'm {mi_nombre}, a project manager with experience leading development teams, managing stakeholders, and delivering projects end-to-end using agile methodologies.
+I'm {Nombre}, a project manager with experience leading development teams, managing stakeholders, and delivering projects end-to-end using agile methodologies.
 
 I believe my experience in technical team management and results-driven approach can bring value to {empresa}.
 
-Here's my LinkedIn: {mi_linkedin}
+Here's my LinkedIn: {Linkedin}
 
 Looking forward to hearing from you. Thanks!
 
 Best,
-{mi_nombre}` },
+{Nombre}` },
 
     { cat: mgmtId, lang: 'ENG', type: 'mensaje_empresa', name: 'Company Application Mgmt EN',
       content: `Dear {empresa} team,
 
 I'm applying for the {oferta_laboral} position I recently saw posted.
 
-My name is {mi_nombre} and I work as a project manager with experience leading cross-functional teams, strategic planning, and technology project execution. I have a results-oriented approach and effective stakeholder communication.
+My name is {Nombre} and I work as a project manager with experience leading cross-functional teams, strategic planning, and technology project execution. I have a results-oriented approach and effective stakeholder communication.
 
 I've led projects using agile methodologies (Scrum, Kanban) and tools like Jira, Notion, and GitHub Projects.
 
-My portfolio and detailed experience: {mi_portfolio}
-LinkedIn: {mi_linkedin}
+My portfolio and detailed experience: {Portfolio}
+LinkedIn: {Linkedin}
 
 I'm available for an interview at your convenience. Thank you.
 
 Best regards,
-{mi_nombre}` },
+{Nombre}` },
 
     { cat: mgmtId, lang: 'ENG', type: 'mensaje_recruiter', name: 'Recruiter Message Mgmt EN',
       content: `Hi {nombre_empleado}, how are you?
 
 I'm reaching out because I saw you work as {puesto_empleado} at {empresa} and wanted to check if you have any active searches for management or technical leadership roles.
 
-I'm {mi_nombre}, a project manager with a technical background. I have experience managing development teams and coordinating projects end-to-end. I'm interested in joining a team where I can contribute through management.
+I'm {Nombre}, a project manager with a technical background. I have experience managing development teams and coordinating projects end-to-end. I'm interested in joining a team where I can contribute through management.
 
-LinkedIn: {mi_linkedin}
+LinkedIn: {Linkedin}
 
 Thanks and best regards!
 
-{mi_nombre}` },
+{Nombre}` },
   ];
 
-  const insertMany = db.transaction(() => {
+  db.transaction(() => {
     for (let i = 0; i < templates.length; i++) {
       const t = templates[i];
-      insertTemplate.run(t.cat, t.lang, t.type, t.name, t.content.trim(), i + 1);
+      if (!hasTemplate(userId, t.cat, t.lang, t.type, t.name)) {
+        insertTemplate.run(userId, t.cat, t.lang, t.type, t.name, t.content.trim(), i + 1);
+      }
     }
-  });
+  })();
 
-  insertMany();
-
-  const insertConfig = db.prepare('INSERT OR IGNORE INTO config (clave, valor) VALUES (?, ?)');
   const configs = [
-    ['mi_nombre', ''],
-    ['mi_linkedin', ''],
-    ['mi_telefono', ''],
-    ['mi_portfolio', ''],
-    ['mi_email', ''],
-    ['default_categoria_id', '1'],
-    ['default_idioma', 'ESP'],
+    ['Nombre', ''],
+    ['Linkedin', ''],
+    ['Telefono', ''],
+    ['Portfolio', ''],
+    ['Email', ''],
   ];
+  const insertConfig = db.prepare('INSERT INTO config (user_id, clave, valor) VALUES (?, ?, ?)');
   for (const [k, v] of configs) {
-    insertConfig.run(k, v);
+    if (!hasConfig(userId, k)) insertConfig.run(userId, k, v);
+  }
+  if (!hasConfig(userId, 'default_categoria_id')) insertConfig.run(userId, 'default_categoria_id', String(techId));
+  if (!hasConfig(userId, 'default_idioma')) insertConfig.run(userId, 'default_idioma', 'ESP');
+
+  const insertIdioma = db.prepare('INSERT INTO idiomas (user_id, nombre) VALUES (?, ?)');
+  for (const nombre of ['ESP', 'ENG']) {
+    if (!hasIdioma(userId, nombre)) insertIdioma.run(userId, nombre);
   }
 
-  const insertIdioma = db.prepare('INSERT OR IGNORE INTO idiomas (nombre) VALUES (?)');
-  insertIdioma.run('ESP');
-  insertIdioma.run('ENG');
-
-  const insertTag = db.prepare('INSERT OR IGNORE INTO tags (nombre, color) VALUES (?, ?)');
-  insertTag.run('solicitado', 'var(--surface-hover)');
-  insertTag.run('mensajeado', '#16a34a');
-  insertTag.run('en_proceso', '#2563eb');
-  insertTag.run('rechazado', '#dc2626');
-  insertTag.run('pendiente', '#d97706');
+  const insertTag = db.prepare('INSERT INTO tags (user_id, nombre, color) VALUES (?, ?, ?)');
+  for (const [nombre, color] of [
+    ['solicitado', 'var(--surface-hover)'],
+    ['mensajeado', '#16a34a'],
+    ['en_proceso', '#2563eb'],
+    ['rechazado', '#dc2626'],
+    ['pendiente', '#d97706'],
+  ] as [string, string][]) {
+    if (!hasTag(userId, nombre)) insertTag.run(userId, nombre, color);
+  }
 }

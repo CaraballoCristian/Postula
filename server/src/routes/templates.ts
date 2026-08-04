@@ -1,12 +1,19 @@
-import { Router, Request, Response } from 'express';
+import { Router, Response } from 'express';
 import db from '../db';
+import { requireAuth, AuthRequest } from '../middleware/auth';
 
 const router = Router();
+router.use(requireAuth);
 
-router.get('/', (req: Request, res: Response) => {
+function categoriaDelUsuario(categoria_id: number, userId: number): boolean {
+  return !!db.prepare('SELECT id FROM categorias WHERE id = ? AND user_id = ?').get(categoria_id, userId);
+}
+
+router.get('/', (req: AuthRequest, res: Response) => {
+  const userId = req.userId!;
   const { categoria_id, idioma, tipo } = req.query;
-  let sql = 'SELECT * FROM templates WHERE 1=1';
-  const params: any[] = [];
+  let sql = 'SELECT * FROM templates WHERE user_id = ?';
+  const params: any[] = [userId];
 
   if (categoria_id) {
     sql += ' AND categoria_id = ?';
@@ -26,8 +33,8 @@ router.get('/', (req: Request, res: Response) => {
   res.json(rows);
 });
 
-router.get('/:id', (req: Request, res: Response) => {
-  const row = db.prepare('SELECT * FROM templates WHERE id = ?').get(req.params.id);
+router.get('/:id', (req: AuthRequest, res: Response) => {
+  const row = db.prepare('SELECT * FROM templates WHERE id = ? AND user_id = ?').get(req.params.id, req.userId);
   if (!row) {
     res.status(404).json({ error: 'Template no encontrado' });
     return;
@@ -35,28 +42,36 @@ router.get('/:id', (req: Request, res: Response) => {
   res.json(row);
 });
 
-router.post('/', (req: Request, res: Response) => {
+router.post('/', (req: AuthRequest, res: Response) => {
   const { categoria_id, idioma, tipo, nombre, contenido } = req.body;
   if (!categoria_id || !idioma || !tipo || !nombre || contenido === undefined) {
     res.status(400).json({ error: 'Todos los campos son requeridos' });
     return;
   }
+  if (!categoriaDelUsuario(Number(categoria_id), req.userId!)) {
+    res.status(400).json({ error: 'Categoría no encontrada' });
+    return;
+  }
 
   const stmt = db.prepare(
-    'INSERT INTO templates (categoria_id, idioma, tipo, nombre, contenido) VALUES (?, ?, ?, ?, ?)'
+    'INSERT INTO templates (user_id, categoria_id, idioma, tipo, nombre, contenido) VALUES (?, ?, ?, ?, ?, ?)'
   );
-  const result = stmt.run(categoria_id, idioma, tipo, nombre.trim(), contenido);
+  const result = stmt.run(req.userId, categoria_id, idioma, tipo, nombre.trim(), contenido);
   const row = db.prepare('SELECT * FROM templates WHERE id = ?').get(result.lastInsertRowid);
   res.status(201).json(row);
 });
 
-router.put('/:id', (req: Request, res: Response) => {
+router.put('/:id', (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const { nombre, contenido, categoria_id, idioma, tipo } = req.body;
 
-  const existing = db.prepare('SELECT * FROM templates WHERE id = ?').get(id) as any;
+  const existing = db.prepare('SELECT * FROM templates WHERE id = ? AND user_id = ?').get(id, req.userId) as any;
   if (!existing) {
     res.status(404).json({ error: 'Template no encontrado' });
+    return;
+  }
+  if (categoria_id !== undefined && !categoriaDelUsuario(Number(categoria_id), req.userId!)) {
+    res.status(400).json({ error: 'Categoría no encontrada' });
     return;
   }
 
@@ -68,16 +83,16 @@ router.put('/:id', (req: Request, res: Response) => {
 
   db.prepare(
     `UPDATE templates SET nombre = ?, contenido = ?, categoria_id = ?, idioma = ?, tipo = ?, updated_at = datetime('now')
-     WHERE id = ?`
-  ).run(newNombre, newContenido, newCat, newLang, newTipo, id);
+     WHERE id = ? AND user_id = ?`
+  ).run(newNombre, newContenido, newCat, newLang, newTipo, id, req.userId);
 
   const row = db.prepare('SELECT * FROM templates WHERE id = ?').get(id);
   res.json(row);
 });
 
-router.delete('/:id', (req: Request, res: Response) => {
-  const stmt = db.prepare('DELETE FROM templates WHERE id = ?');
-  const result = stmt.run(req.params.id);
+router.delete('/:id', (req: AuthRequest, res: Response) => {
+  const stmt = db.prepare('DELETE FROM templates WHERE id = ? AND user_id = ?');
+  const result = stmt.run(req.params.id, req.userId);
   if (result.changes === 0) {
     res.status(404).json({ error: 'Template no encontrado' });
     return;

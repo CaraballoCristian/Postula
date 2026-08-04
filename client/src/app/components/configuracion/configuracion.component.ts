@@ -1,12 +1,13 @@
-import { Component, OnInit, signal, effect, HostListener } from '@angular/core';
+import { Component, OnInit, signal, computed, effect, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { ApiService } from '../../services/api.service';
+import { AuthService } from '../../services/auth.service';
 import { DialogService } from '../../services/dialog.service';
 import { SharedStateService } from '../../services/shared-state.service';
 import { ConfigEntry, Categoria, Idioma, Tag } from '../../models/interfaces';
 import { I18nService } from '../../services/i18n.service';
 
-type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags' | 'backup';
+type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags' | 'backup' | 'seguridad';
 
 @Component({
   selector: 'app-configuracion',
@@ -38,8 +39,8 @@ type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags' | 'backup';
           @if (loading()) {
             <div class="card text-center py-12 flex items-center justify-center gap-2" style="opacity: 0.5;"><span class="loader"></span> {{ i18n.t('common.loading') }}</div>
           } @else {
-            @for (e of entries(); track e.id) {
-              <div class="card flex items-center gap-3">
+            @for (e of userEntries(); track e.id; let i = $index) {
+              <div class="card flex items-center gap-3 animate-stagger" [style.animation-delay]="stagger(i)">
                 <span class="text-sm font-mono shrink-0" style="min-width: 120px;">{{ e.clave }}</span>
                 <span class="text-sm flex-1 truncate" style="opacity: 0.6;">{{ e.valor || '—' }}</span>
                 <span class="text-xs shrink-0" style="opacity: 0.35; white-space: nowrap;">{{ refCount(e.clave) }} {{ i18n.t('cfg.refs') }}</span>
@@ -60,8 +61,8 @@ type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags' | 'backup';
           @if (loading()) {
             <div class="card text-center py-12 flex items-center justify-center gap-2" style="opacity: 0.5;"><span class="loader"></span> {{ i18n.t('common.loading') }}</div>
           } @else {
-            @for (c of categorias(); track c.id) {
-              <div class="card flex items-center gap-3">
+            @for (c of categorias(); track c.id; let i = $index) {
+              <div class="card flex items-center gap-3 animate-stagger" [style.animation-delay]="stagger(i)">
                 <span class="text-sm flex-1">{{ i18n.categoriaLabel(c.nombre) }}</span>
                 <span class="text-xs shrink-0" style="opacity: 0.35; white-space: nowrap;">{{ catRefCount(c.id) }} {{ i18n.t('cfg.refs') }}</span>
                 <button class="btn btn-ghost btn-sm text-sm" (click)="setDefaultCategoria(c.id)" [style.opacity]="defaultCategoriaId === c.id ? '1' : '0.3'" [title]="i18n.t('cfg.setDefault')">⭐</button>
@@ -82,8 +83,8 @@ type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags' | 'backup';
           @if (loading()) {
             <div class="card text-center py-12 flex items-center justify-center gap-2" style="opacity: 0.5;"><span class="loader"></span> {{ i18n.t('common.loading') }}</div>
           } @else {
-            @for (i of idiomas(); track i.id) {
-              <div class="card flex items-center gap-3">
+            @for (i of idiomas(); track i.id; let idx = $index) {
+              <div class="card flex items-center gap-3 animate-stagger" [style.animation-delay]="stagger(idx)">
                 <span class="text-sm flex-1">{{ i.nombre }}</span>
                 <span class="text-xs shrink-0" style="opacity: 0.35; white-space: nowrap;">{{ idiomaRefCount(i.nombre) }} {{ i18n.t('cfg.refs') }}</span>
                 <button class="btn btn-ghost btn-sm text-sm" (click)="setDefaultIdioma(i.id)" [style.opacity]="defaultIdiomaNombre === i.nombre ? '1' : '0.3'" [title]="i18n.t('cfg.setDefault')">⭐</button>
@@ -104,8 +105,8 @@ type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags' | 'backup';
           @if (loading()) {
             <div class="card text-center py-12 flex items-center justify-center gap-2" style="opacity: 0.5;"><span class="loader"></span> {{ i18n.t('common.loading') }}</div>
           } @else {
-            @for (t of tags(); track t.id) {
-              <div class="card flex items-center gap-3">
+            @for (t of tags(); track t.id; let i = $index) {
+              <div class="card flex items-center gap-3 animate-stagger" [style.animation-delay]="stagger(i)">
                 <span class="w-3 h-3 rounded-full shrink-0" [style.background-color]="t.color"></span>
                 <span class="text-sm flex-1">{{ i18n.tagLabel(t.nombre) }}</span>
                 <button class="btn btn-ghost btn-sm" (click)="openTagModal(t)" [title]="i18n.t('common.edit')">✏️</button>
@@ -125,6 +126,40 @@ type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags' | 'backup';
             <button class="btn btn-outline" (click)="fileInput.click()">⬆️ {{ i18n.t('backup.import') }}</button>
             <input #fileInput type="file" accept="application/json,.json" style="display:none;" (change)="onFileSelected($event)" />
           </div>
+        </div>
+      }
+
+      <!-- CAMBIAR CONTRASEÑA -->
+      @if (activeSection() === 'seguridad') {
+        <div class="max-w-sm">
+          <p class="text-sm mb-4" style="opacity: 0.55;">{{ i18n.t('auth.changePasswordHint') }}</p>
+          <form (ngSubmit)="changePassword()" class="flex flex-col gap-3">
+            <label class="flex flex-col gap-1">
+              <span class="text-sm" style="opacity: 0.6;">{{ i18n.t('auth.currentPassword') }}</span>
+              <input type="password" [(ngModel)]="formCurrentPassword" name="currentPassword" autocomplete="current-password" required />
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-sm" style="opacity: 0.6;">{{ i18n.t('auth.newPassword') }}</span>
+              <input type="password" [(ngModel)]="formNewPassword" name="newPassword" autocomplete="new-password" required />
+            </label>
+            <label class="flex flex-col gap-1">
+              <span class="text-sm" style="opacity: 0.6;">{{ i18n.t('auth.confirmPassword') }}</span>
+              <input type="password" [(ngModel)]="formConfirmPassword" name="confirmNewPassword" autocomplete="new-password" required />
+            </label>
+            <p class="text-xs" style="opacity: 0.5;">{{ i18n.t('auth.passwordHint') }}</p>
+
+            @if (pwMsg()) {
+              <p class="text-sm" [style.color]="pwOk() ? '#16a34a' : '#dc2626'">{{ pwMsg() }}</p>
+            }
+
+            <button type="submit" class="btn btn-primary w-full" [disabled]="pwLoading()">
+              @if (pwLoading()) {
+                <span class="loader" style="border-top-color: #fff;"></span>
+              } @else {
+                {{ i18n.t('auth.changePassword') }}
+              }
+            </button>
+          </form>
         </div>
       }
     </div>
@@ -227,7 +262,9 @@ type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags' | 'backup';
   `,
 })
 export class ConfiguracionComponent implements OnInit {
+  private readonly RESERVED_KEYS = ['default_categoria_id', 'default_idioma'];
   entries = signal<ConfigEntry[]>([]);
+  userEntries = computed(() => this.entries().filter(e => !this.RESERVED_KEYS.includes(e.clave)));
   categorias = signal<Categoria[]>([]);
   idiomas = signal<Idioma[]>([]);
   loaded = signal(false);
@@ -240,6 +277,7 @@ export class ConfiguracionComponent implements OnInit {
     { id: 'idiomas', labelKey: 'cfg.section.idiomas' },
     { id: 'tags', labelKey: 'cfg.section.tags' },
     { id: 'backup', labelKey: 'backup.section' },
+    { id: 'seguridad', labelKey: 'auth.section.security' },
   ];
 
   private allTemplates: any[] = [];
@@ -254,8 +292,16 @@ export class ConfiguracionComponent implements OnInit {
   modalTag = signal(false); editTagId = signal<number | null>(null); formTagNombre = ''; formTagColor = '#3b82f6';
   deleteTagModal = signal(false); pendingDeleteId: number | null = null; pendingDeleteCount = 0; reassignTagId: number | null = null;
 
+  formCurrentPassword = '';
+  formNewPassword = '';
+  formConfirmPassword = '';
+  pwLoading = signal(false);
+  pwMsg = signal('');
+  pwOk = signal(false);
+
   constructor(
     private api: ApiService,
+    private auth: AuthService,
     private dialog: DialogService,
     private shared: SharedStateService,
     public i18n: I18nService,
@@ -328,7 +374,7 @@ export class ConfiguracionComponent implements OnInit {
   async saveDato() {
     const clave = this.formDatoClave.trim(); const valor = this.formDatoValor;
     if (!clave) { this.dialog.toast(this.i18n.t('cfg.claveVacia')); return; }
-    if (!/^[a-z0-9_]+$/.test(clave)) { this.dialog.toast(this.i18n.t('cfg.claveInvalida')); return; }
+    if (!/^[A-Za-z][A-Za-z0-9_]*$/.test(clave)) { this.dialog.toast(this.i18n.t('cfg.claveInvalida')); return; }
     const id = this.editDatoId();
     if (id && this.oldClave && clave !== this.oldClave) {
       const affected = this.allTemplates.filter((t: any) => new RegExp(`\\{${this.oldClave}\\}`, 'g').test(t.contenido));
@@ -522,4 +568,67 @@ export class ConfiguracionComponent implements OnInit {
       error: () => this.dialog.toast(this.i18n.t('common.error.delete')),
     });
   }
+
+  // ── CAMBIAR CONTRASEÑA ──
+  changePassword() {
+    if (this.pwLoading()) return;
+    this.pwMsg.set('');
+    this.pwOk.set(false);
+
+    const current = this.formCurrentPassword;
+    const next = this.formNewPassword;
+    const confirm = this.formConfirmPassword;
+
+    if (!current || !next) {
+      this.pwMsg.set(this.i18n.t('auth.error.required'));
+      return;
+    }
+    if (next.length < 8) {
+      this.pwMsg.set(this.i18n.t('auth.error.shortPassword'));
+      return;
+    }
+    if (next.length > 72) {
+      this.pwMsg.set(this.i18n.t('auth.error.longPassword'));
+      return;
+    }
+    if (COMMON_PASSWORDS.has(next.toLowerCase())) {
+      this.pwMsg.set(this.i18n.t('auth.error.commonPassword'));
+      return;
+    }
+    if (next !== confirm) {
+      this.pwMsg.set(this.i18n.t('auth.error.passwordMismatch'));
+      return;
+    }
+
+    this.pwLoading.set(true);
+    this.auth.changePassword(current, next).subscribe({
+      next: () => {
+        this.pwLoading.set(false);
+        this.pwOk.set(true);
+        this.pwMsg.set(this.i18n.t('auth.passwordChanged'));
+        this.formCurrentPassword = '';
+        this.formNewPassword = '';
+        this.formConfirmPassword = '';
+      },
+      error: (err) => {
+        this.pwLoading.set(false);
+        const msg = this.auth.errorMessage(err);
+        this.pwMsg.set(msg ?? this.i18n.t('common.error.save'));
+      },
+    });
+  }
+
+  stagger(i: number): string {
+    return `${Math.min(i * 30, 300)}ms`;
+  }
 }
+
+const COMMON_PASSWORDS = new Set([
+  'password', 'password1', 'password12', 'password123', 'password1234',
+  'qwerty', 'qwerty123', 'abc123', 'abc12345',
+  'letmein', 'welcome', 'admin', 'admin123', 'administrator',
+  'iloveyou', 'monkey', 'dragon', 'master', 'login', 'princess',
+  'football', 'baseball', 'sunshine', 'charlie', 'trustno1', 'shadow',
+  '123456', '1234567', '12345678', '123456789', '1234567890',
+  '123123', '123qwe', '111111', '000000', '654321', '666666', '888888', '999999',
+]);

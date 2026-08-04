@@ -4,7 +4,9 @@ import { ClipboardService } from './services/clipboard.service';
 import { ThemeService } from './services/theme.service';
 import { SharedStateService } from './services/shared-state.service';
 import { I18nService } from './services/i18n.service';
+import { AuthService } from './services/auth.service';
 import { TabName } from './models/interfaces';
+import { LoginComponent } from './components/login/login.component';
 import { ConfiguracionComponent } from './components/configuracion/configuracion.component';
 import { EditorTemplatesComponent } from './components/editor-templates/editor-templates.component';
 import { NuevaPostulacionComponent } from './components/nueva-postulacion/nueva-postulacion.component';
@@ -16,6 +18,7 @@ import { DialogComponent } from './components/dialog/dialog.component';
   standalone: true,
   imports: [
     FormsModule,
+    LoginComponent,
     ConfiguracionComponent,
     EditorTemplatesComponent,
     NuevaPostulacionComponent,
@@ -23,12 +26,27 @@ import { DialogComponent } from './components/dialog/dialog.component';
     DialogComponent,
   ],
   template: `
+    @if (!auth.ready()) {
+      <div class="min-h-screen flex items-center justify-center" style="background-color: var(--bg);">
+        <div class="flex items-center gap-2 text-sm" style="opacity: 0.55;"><span class="loader"></span> {{ i18n.t('auth.loading') }}</div>
+      </div>
+    } @else if (!auth.isAuthenticated()) {
+      <app-login />
+    } @else {
     <div class="min-h-screen" style="background-color: var(--bg);">
       <div class="max-w-5xl mx-auto my-2 rounded-lg flex flex-col" style="background-color: var(--surface); border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
         <!-- HEADER -->
         <header class="px-6 py-3 flex items-center justify-between" style="border-bottom: 1px solid var(--border);">
           <h1 class="text-base font-semibold tracking-tight select-none">PostulaTool</h1>
           <div class="flex items-center gap-2">
+            <span class="text-xs select-none" style="opacity: 0.6;">{{ auth.user()?.email }}</span>
+            <button
+              class="px-2.5 py-1 text-xs font-medium rounded border-0 cursor-pointer select-none"
+              style="background: var(--surface); color: var(--accent);"
+              (click)="logout()"
+              [title]="i18n.t('auth.logout')"
+            >{{ i18n.t('auth.logout') }}</button>
+            <span class="w-px h-5" style="background: var(--border);" aria-hidden="true"></span>
             <button
               class="w-8 h-8 rounded-md flex items-center justify-center text-sm border-0 cursor-pointer transition-colors"
               [style.background]="theme.isDark() ? 'var(--surface-hover)' : 'transparent'"
@@ -104,6 +122,7 @@ import { DialogComponent } from './components/dialog/dialog.component';
 
       <app-dialog />
     </div>
+    }
   `,
   styles: [`
     :host { display: block; }
@@ -123,5 +142,11 @@ export class AppComponent {
     public theme: ThemeService,
     public shared: SharedStateService,
     public i18n: I18nService,
+    public auth: AuthService,
   ) {}
+
+  logout() {
+    this.auth.logout();
+    this.shared.activeTab.set('postular');
+  }
 }
