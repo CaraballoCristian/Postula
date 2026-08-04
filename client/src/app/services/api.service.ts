@@ -1,7 +1,7 @@
 import { Injectable } from '@angular/core';
 import { HttpClient } from '@angular/common/http';
 import { Observable } from 'rxjs';
-import { Categoria, Template, ConfigEntry, Postulacion, PostulacionPayload, Idioma, Tag, User, AuthResponse } from '../models/interfaces';
+import { Categoria, Template, ConfigEntry, Postulacion, PostulacionPayload, Idioma, Tag, Empresa, User, AuthResponse } from '../models/interfaces';
 
 @Injectable({ providedIn: 'root' })
 export class ApiService {
@@ -69,6 +69,20 @@ export class ApiService {
   }
   deleteTag(id: number, dest?: number): Observable<any> {
     return this.http.delete(`${this.base}/tags/${id}`, dest !== undefined ? { body: { dest } } : {});
+  }
+
+  // ── Empresas ──
+  getEmpresas(): Observable<Empresa[]> {
+    return this.http.get<Empresa[]>(`${this.base}/empresas`);
+  }
+  createEmpresa(data: { nombre: string; link?: string }): Observable<Empresa> {
+    return this.http.post<Empresa>(`${this.base}/empresas`, data);
+  }
+  updateEmpresa(id: number, data: { nombre?: string; link?: string }): Observable<Empresa> {
+    return this.http.put<Empresa>(`${this.base}/empresas/${id}`, data);
+  }
+  deleteEmpresa(id: number): Observable<any> {
+    return this.http.delete(`${this.base}/empresas/${id}`);
   }
 
   // ── Templates ──

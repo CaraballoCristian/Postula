@@ -117,6 +117,15 @@ export interface Tag {
   created_at: string;
 }
 
+export interface Empresa {
+  id: number;
+  nombre: string;
+  link: string;
+  post_count: number;
+  favorita: number;
+  created_at: string;
+}
+
 export const ESTADOS: EstadoOption[] = [
   { value: 'solicitado', label: 'Solicitado', color: 'var(--surface-hover)' },
   { value: 'mensajeado', label: 'Mensajeado', color: '#16a34a' },

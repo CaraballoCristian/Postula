@@ -12,6 +12,7 @@ export class SharedStateService {
   tagsRefresh = signal(0);
   categoriasRefresh = signal(0);
   idiomasRefresh = signal(0);
+  empresasRefresh = signal(0);
 
   constructor() {
     const saved = localStorage.getItem('postulatool.tab') as TabName | null;
