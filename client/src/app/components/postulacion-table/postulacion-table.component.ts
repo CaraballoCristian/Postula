@@ -57,21 +57,21 @@ interface TableCol {
                   </td>
                 }
                 @if (show('idioma')) {
-                  <td class="px-3 py-2.5" style="border-left: 1px solid var(--border);">{{ p.idioma || '' }}</td>
+                  <td class="px-3 py-2.5" style="border-left: 1px solid var(--border);">{{ p.idioma || '—' }}</td>
                 }
                 @if (show('oferta_laboral')) {
-                  <td class="px-3 py-2.5" style="max-width: 90px; white-space: nowrap; border-left: 1px solid var(--border);"><span style="display: inline-block; max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: text-bottom;">{{ p.oferta_laboral }}</span></td>
+                  <td class="px-3 py-2.5" style="max-width: 90px; white-space: nowrap; border-left: 1px solid var(--border);"><span style="display: inline-block; max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: text-bottom;">{{ p.oferta_laboral || '—' }}</span></td>
                 }
                 @if (show('nombre_empleado')) {
                   <td class="px-3 py-2.5" style="white-space: nowrap; border-left: 1px solid var(--border);">
-                    <span style="display: inline-block; max-width: 85px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: text-bottom;">{{ p.nombre_empleado }}</span>
+                    <span style="display: inline-block; max-width: 85px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: text-bottom;">{{ p.nombre_empleado || '—' }}</span>
                     @if (p.contacto_empleado) {
                       <a [href]="fixUrl(p.contacto_empleado)" target="_blank" rel="noopener" class="ml-1 no-underline" style="color: var(--accent);" [title]="i18n.t('hist.abrirLink')">↗</a>
                     }
                   </td>
                 }
                 @if (show('puesto_empleado')) {
-                  <td class="px-3 py-2.5" style="white-space: nowrap; border-left: 1px solid var(--border);"><span style="display: inline-block; max-width: 75px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: text-bottom;">{{ p.puesto_empleado }}</span></td>
+                  <td class="px-3 py-2.5" style="white-space: nowrap; border-left: 1px solid var(--border);"><span style="display: inline-block; max-width: 75px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: text-bottom;">{{ p.puesto_empleado || '—' }}</span></td>
                 }
                 @if (show('estado')) {
                   <td class="px-3 py-2.5" style="border-left: 1px solid var(--border);">
@@ -95,7 +95,7 @@ interface TableCol {
                 <tr>
                   <td [attr.colspan]="colspan" class="px-4 py-3">
                     <div class="space-y-2">
-                      @if (p.link_empresa) {
+                      @if (!hideEmpresaLink && p.link_empresa) {
                         <div class="text-xs"><a [href]="fixUrl(p.link_empresa)" target="_blank" rel="noopener" style="color: var(--accent);">🔗 {{ p.link_empresa }}</a></div>
                       }
                       @if (p.contacto_empleado) {
@@ -114,18 +114,6 @@ interface TableCol {
                             </div>
                             @if (expandedMsg === 'email') {
                               <div style="border-top: 1px solid var(--border);"><pre class="text-xs whitespace-pre-wrap font-sans leading-relaxed px-3 py-2" style="margin: 0;">{{ p.resultado_email }}</pre></div>
-                            }
-                          </div>
-                        }
-                        @if (tipo === 'mensaje_empresa' && p.resultado_empresa) {
-                          <div class="animate-fade-in" style="border: 1px solid var(--border); border-radius: 0.375rem; overflow: hidden;">
-                            <div class="flex items-center gap-3 px-3 py-2 cursor-pointer text-xs" [style.background-color]="expandedMsg === 'mensaje_empresa' ? 'var(--surface-hover)' : 'transparent'" (click)="toggleMsg.emit('mensaje_empresa')">
-                              <span class="flex-1 font-medium">🏢 {{ i18n.t('hist.expEmpresa') }}</span>
-                              <span style="opacity: 0.4;">{{ expandedMsg === 'mensaje_empresa' ? '▲' : '▼' }}</span>
-                              <button class="btn btn-ghost btn-sm text-xs" (click)="copy.emit(p.resultado_empresa!); $event.stopPropagation()" [title]="i18n.t('hist.copy')">📋</button>
-                            </div>
-                            @if (expandedMsg === 'mensaje_empresa') {
-                              <div style="border-top: 1px solid var(--border);"><pre class="text-xs whitespace-pre-wrap font-sans leading-relaxed px-3 py-2" style="margin: 0;">{{ p.resultado_empresa }}</pre></div>
                             }
                           </div>
                         }
@@ -165,6 +153,7 @@ export class PostulacionTableComponent {
   @Input() estados: EstadoOption[] = [];
   @Input() catNombres: Record<number, string> = {};
   @Input() isSelected: (id: number) => boolean = () => false;
+  @Input() hideEmpresaLink = false;
 
   @Output() toggleFav = new EventEmitter<Postulacion>();
   @Output() toggleSelect = new EventEmitter<number>();

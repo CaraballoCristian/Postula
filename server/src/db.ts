@@ -489,6 +489,23 @@ addMigration('normalización de empresas (empresas + backfill)', () => {
   `).run();
 });
 
+// ── v17: mensaje de empresa sobre `empresas` (evita duplicarlo por postulación) ──
+addMigration('mensaje de empresa en empresas', () => {
+  if (!hasColumn('empresas', 'resultado_empresa')) {
+    db.exec(`ALTER TABLE empresas ADD COLUMN resultado_empresa TEXT`);
+  }
+  // Backfill desde la postulación más reciente con mensaje de empresa por (user_id, empresa).
+  db.prepare(`
+    UPDATE empresas SET resultado_empresa = (
+      SELECT p.resultado_empresa FROM postulaciones p
+      WHERE p.user_id = empresas.user_id AND p.empresa = empresas.nombre
+        AND p.resultado_empresa IS NOT NULL AND p.resultado_empresa <> ''
+      ORDER BY p.created_at DESC, p.id DESC LIMIT 1
+    )
+    WHERE resultado_empresa IS NULL OR resultado_empresa = ''
+  `).run();
+});
+
 /** Ejecuta las migraciones pendientes y avanza `user_version`. */
 export function initDB() {
   const from = userVersion();

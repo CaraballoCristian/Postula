@@ -4,7 +4,7 @@ import { ApiService } from '../../services/api.service';
 import { AuthService } from '../../services/auth.service';
 import { DialogService } from '../../services/dialog.service';
 import { SharedStateService } from '../../services/shared-state.service';
-import { ConfigEntry, Categoria, Idioma, Tag } from '../../models/interfaces';
+import { ConfigEntry, Categoria, Idioma, Tag, Postulacion } from '../../models/interfaces';
 import { I18nService } from '../../services/i18n.service';
 
 type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags' | 'backup' | 'seguridad';
@@ -15,9 +15,9 @@ type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags' | 'backup' | 's
   imports: [FormsModule],
   template: `
     <div>
-      <nav class="flex border-b mb-5" style="border-color: var(--border);">
+      <nav class="flex overflow-x-auto border-b mb-5" style="border-color: var(--border);">
         @for (s of sections; track s.id) {
-          <button class="relative px-3 py-2 text-sm font-medium cursor-pointer select-none bg-transparent border-0 rounded-none transition-colors"
+          <button class="relative px-2 sm:px-3 py-2 text-sm font-medium cursor-pointer select-none bg-transparent border-0 rounded-none transition-colors whitespace-nowrap"
             [style.color]="activeSection() === s.id ? 'var(--accent)' : ''"
             [style.opacity]="activeSection() === s.id ? '1' : '0.55'"
             (click)="activeSection.set(s.id)">
@@ -62,8 +62,8 @@ type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags' | 'backup' | 's
             <div class="card text-center py-12 flex items-center justify-center gap-2" style="opacity: 0.5;"><span class="loader"></span> {{ i18n.t('common.loading') }}</div>
           } @else {
             @for (c of categorias(); track c.id; let i = $index) {
-              <div class="card flex items-center gap-3 animate-stagger" [style.animation-delay]="stagger(i)">
-                <span class="text-sm flex-1">{{ i18n.categoriaLabel(c.nombre) }}</span>
+              <div class="card flex items-center gap-3 flex-wrap animate-stagger" [style.animation-delay]="stagger(i)">
+                <span class="text-sm flex-1 min-w-0 truncate">{{ i18n.categoriaLabel(c.nombre) }}</span>
                 <span class="text-xs shrink-0" style="opacity: 0.35; white-space: nowrap;">{{ catRefCount(c.id) }} {{ i18n.t('cfg.refs') }}</span>
                 <button class="btn btn-ghost btn-sm text-sm" (click)="setDefaultCategoria(c.id)" [style.opacity]="defaultCategoriaId === c.id ? '1' : '0.3'" [title]="i18n.t('cfg.setDefault')">⭐</button>
                 <button class="btn btn-ghost btn-sm" (click)="openCatModal(c)" [title]="i18n.t('common.edit')">✏️</button>
@@ -84,8 +84,8 @@ type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags' | 'backup' | 's
             <div class="card text-center py-12 flex items-center justify-center gap-2" style="opacity: 0.5;"><span class="loader"></span> {{ i18n.t('common.loading') }}</div>
           } @else {
             @for (i of idiomas(); track i.id; let idx = $index) {
-              <div class="card flex items-center gap-3 animate-stagger" [style.animation-delay]="stagger(idx)">
-                <span class="text-sm flex-1">{{ i.nombre }}</span>
+              <div class="card flex items-center gap-3 flex-wrap animate-stagger" [style.animation-delay]="stagger(idx)">
+                <span class="text-sm flex-1 min-w-0 truncate">{{ i.nombre }}</span>
                 <span class="text-xs shrink-0" style="opacity: 0.35; white-space: nowrap;">{{ idiomaRefCount(i.nombre) }} {{ i18n.t('cfg.refs') }}</span>
                 <button class="btn btn-ghost btn-sm text-sm" (click)="setDefaultIdioma(i.id)" [style.opacity]="defaultIdiomaNombre === i.nombre ? '1' : '0.3'" [title]="i18n.t('cfg.setDefault')">⭐</button>
                 <button class="btn btn-ghost btn-sm" (click)="openIdiomaModal(i)" [title]="i18n.t('common.edit')">✏️</button>
@@ -106,9 +106,9 @@ type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags' | 'backup' | 's
             <div class="card text-center py-12 flex items-center justify-center gap-2" style="opacity: 0.5;"><span class="loader"></span> {{ i18n.t('common.loading') }}</div>
           } @else {
             @for (t of tags(); track t.id; let i = $index) {
-              <div class="card flex items-center gap-3 animate-stagger" [style.animation-delay]="stagger(i)">
+              <div class="card flex items-center gap-3 flex-wrap animate-stagger" [style.animation-delay]="stagger(i)">
                 <span class="w-3 h-3 rounded-full shrink-0" [style.background-color]="t.color"></span>
-                <span class="text-sm flex-1">{{ i18n.tagLabel(t.nombre) }}</span>
+                <span class="text-sm flex-1 min-w-0 truncate">{{ i18n.tagLabel(t.nombre) }}</span>
                 <button class="btn btn-ghost btn-sm" (click)="openTagModal(t)" [title]="i18n.t('common.edit')">✏️</button>
                 <button class="btn btn-ghost btn-sm" (click)="removeTag(t.id)" [title]="i18n.t('common.delete')">🗑️</button>
               </div>
@@ -385,8 +385,53 @@ export class ConfiguracionComponent implements OnInit {
         this.api.getTemplates().subscribe(d => this.allTemplates = d);
       }
     }
+
+    if (id && this.oldClave === clave) {
+      const oldValor = this.entries().find(e => e.id === id)?.valor ?? '';
+      if (valor !== oldValor) {
+        const confirmed = await this.propagateValor(clave, valor);
+        if (!confirmed) return;
+      }
+    }
+
     const req = id ? this.api.updateConfig(id, { clave, valor }) : this.api.createConfig(clave, valor);
     req.subscribe(() => { this.shared.configRefresh.update(v => v + 1); this.closeModals(); this.api.getConfig().subscribe(d => this.entries.set(d)); });
+  }
+
+  private renderTemplate(contenido: string, values: Record<string, string>): string {
+    return contenido.replace(/\{(\w+)\}/g, (_m, k) => values[k] ?? '-');
+  }
+
+  /** Propaga un cambio de valor de variable personal a las publicaciones que la usan y re-renderiza sus mensajes. */
+  private async propagateValor(clave: string, nuevoValor: string): Promise<boolean> {
+    const list = await new Promise<Postulacion[]>(resolve => this.api.getPostulaciones().subscribe(resolve));
+    const afectadas = list.filter(p => p.valores_usados && Object.prototype.hasOwnProperty.call(p.valores_usados, clave));
+    if (afectadas.length === 0) return true;
+    const ok = await this.dialog.confirm(this.i18n.t('cfg.propDato', { clave, count: afectadas.length }));
+    if (!ok) return false;
+    const tplMap = new Map<number, any>();
+    for (const t of this.allTemplates as any[]) tplMap.set(t.id, t);
+    let done = 0;
+    for (const p of afectadas) {
+      const values: Record<string, string> = { ...p.valores_usados, [clave]: nuevoValor };
+      let email: string | null = null;
+      let empresaMsg: string | null = null;
+      let recruiter: string | null = null;
+      for (const tid of (p.template_ids || [])) {
+        const t = tplMap.get(tid);
+        if (!t) continue;
+        const texto = this.renderTemplate(t.contenido, values);
+        if (t.tipo === 'email') email = texto;
+        else if (t.tipo === 'mensaje_empresa') empresaMsg = texto;
+        else recruiter = texto;
+      }
+      await new Promise<void>(r => this.api.updatePostulacion(p.id, {
+        resultado_email: email, resultado_empresa: empresaMsg, resultado_recruiter: recruiter, valores_usados: values,
+      }).subscribe({ next: () => r(), error: () => r() }));
+      done++;
+    }
+    if (done > 0) this.dialog.toast(this.i18n.t('cfg.propDatoDone', { count: done }));
+    return true;
   }
 
   async removeDato(id: number) {

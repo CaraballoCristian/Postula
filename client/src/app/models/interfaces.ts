@@ -121,6 +121,7 @@ export interface Empresa {
   id: number;
   nombre: string;
   link: string;
+  resultado_empresa: string | null;
   post_count: number;
   favorita: number;
   created_at: string;

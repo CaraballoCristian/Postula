@@ -14,7 +14,7 @@ const activeDropdownId = signal<string | null>(null);
         <span>▾</span>
       </button>
       @if (open()) {
-        <div class="absolute top-full left-0 mt-1 z-20 w-full shadow-lg" style="background: var(--surface); border: 1px solid var(--border); border-radius: 0.375rem; padding: 0.25rem;"
+        <div class="absolute top-full left-0 mt-1 z-20 w-full shadow-lg" style="background: var(--surface); border: 1px solid var(--border); border-radius: 0.375rem; padding: 0.25rem; max-height: 60vh; overflow-y: auto;"
           (click)="$event.stopPropagation()">
           @for (opt of options; track opt.value; let i = $index) {
             <div class="px-2.5 py-1.5 rounded cursor-pointer text-sm"

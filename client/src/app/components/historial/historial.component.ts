@@ -27,7 +27,7 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
             <button class="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full text-xs border-0 cursor-pointer bg-transparent" style="opacity: 0.4; color: var(--text);" (click)="filtroGlobal.set('')" [title]="i18n.t('hist.limpiar')">×</button>
           }
         </div>
-        <div class="relative w-3/12">
+        <div class="relative w-full sm:w-3/12">
           <button class="text-sm flex items-center justify-between pl-2 pr-1 py-2 rounded-md cursor-pointer border w-full" style="border-color: var(--border); background: var(--surface); color: var(--text);" (click)="toggleDropdown('cat'); $event.stopPropagation()">
             <span>{{ i18n.t('hist.categorias') }}</span>
             <span>▾</span>
@@ -43,7 +43,7 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
             </div>
           }
         </div>
-        <div class="relative w-3/12">
+        <div class="relative w-full sm:w-3/12">
           <button class="text-sm flex items-center justify-between pl-2 pr-1 py-2 rounded-md cursor-pointer border w-full" style="border-color: var(--border); background: var(--surface); color: var(--text);" (click)="toggleDropdown('est'); $event.stopPropagation()">
             <span>{{ i18n.t('hist.estados') }}</span>
             <span>▾</span>
@@ -59,7 +59,7 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
             </div>
           }
         </div>
-        <div class="relative w-2/12">
+        <div class="relative w-full sm:w-2/12">
             <button class="text-sm flex items-center justify-between pl-2 pr-1 py-2 rounded-md cursor-pointer border w-full" style="border-color: var(--border); background: var(--surface); color: var(--text);" (click)="toggleDropdown('idioma'); $event.stopPropagation()">
               <span>{{ i18n.t('hist.idiomas') }}</span>
               <span>▾</span>
@@ -86,7 +86,6 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
         @if (!trashMode()) {
           <div class="flex items-center gap-0.5 p-0.5 border rounded-md" style="border-color: var(--border); background: var(--surface);">
             <button class="view-pill" [class.active]="viewMode() === 'tabla'" (click)="setView('tabla')">☰ {{ i18n.t('hist.tabla') }}</button>
-            <button class="view-pill" [class.active]="viewMode() === 'kanban'" (click)="setView('kanban')">▤ {{ i18n.t('hist.kanban') }}</button>
             <button class="view-pill" [class.active]="viewMode() === 'empresa'" (click)="setView('empresa')">▣ {{ i18n.t('hist.porEmpresa') }}</button>
           </div>
         }
@@ -191,6 +190,18 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
                       <a [href]="fixUrl(empresaLink(g.nombre))" target="_blank" rel="noopener" class="no-underline truncate" style="color: var(--accent);" [title]="empresaLink(g.nombre)">{{ empresaLink(g.nombre) }}</a>
                     </div>
                   }
+                  @if (getEmpresaMensaje(g.nombre)) {
+                    <div class="text-xs" style="border-bottom: 1px solid var(--border);">
+                      <div class="flex items-center gap-2 px-3 py-2 cursor-pointer select-none" [style.background-color]="openEmpresaMensajes().has(g.nombre) ? 'var(--surface-hover)' : 'transparent'" (click)="toggleEmpresaMensaje(g.nombre)">
+                        <span class="flex-1 font-medium">🏢 {{ i18n.t('hist.expEmpresa') }}</span>
+                        <span style="opacity: 0.4;">{{ openEmpresaMensajes().has(g.nombre) ? '▲' : '▼' }}</span>
+                        <button class="btn btn-ghost btn-sm text-xs shrink-0" (click)="copyMsg(getEmpresaMensaje(g.nombre)!); $event.stopPropagation()" [title]="i18n.t('hist.copy')">📋</button>
+                      </div>
+                      @if (openEmpresaMensajes().has(g.nombre)) {
+                        <div style="border-top: 1px solid var(--border);"><pre class="text-xs whitespace-pre-wrap font-sans leading-relaxed px-3 py-2" style="margin: 0;">{{ getEmpresaMensaje(g.nombre) }}</pre></div>
+                      }
+                    </div>
+                  }
                   <app-postulacion-table
                     [rows]="g.items"
                     [columns]="empresaTableColumns"
@@ -203,6 +214,7 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
                     [estados]="estados"
                     [catNombres]="catNombres"
                     [isSelected]="isSelectedFn"
+                    [hideEmpresaLink]="true"
                     (toggleFav)="toggleFav($event)"
                     (toggleSelect)="toggleSelect($event)"
                     (toggleSort)="onTableSort($event)"
@@ -221,8 +233,8 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
           }
         </div>
       </div>
-      } @else {
-      <!-- KANBAN -->
+      } @else if (viewMode() === 'kanban' && false) {
+      <!-- KANBAN (deshabilitado; se mantiene el código por si se reactiva) -->
       <div class="overflow-x-auto" style="overflow-y: hidden; padding-bottom: 8px;">
         <div class="flex items-start gap-3" cdkDropListGroup>
           @for (col of kanbanColumns(); track col.value; let ci = $index) {
@@ -345,13 +357,23 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
     <!-- EDIT MODAL -->
     @if (editModal()) {
       <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[10vh]" style="background: rgba(0,0,0,0.3);">
-        <div class="card w-full max-w-lg mx-4 animate-fade-in" (click)="$event.stopPropagation()">
+        <div class="card w-full max-w-lg mx-4 animate-fade-in max-h-[85vh] overflow-y-auto" (click)="$event.stopPropagation()">
           <h3 class="text-base font-semibold mb-4">{{ i18n.t('hist.editTitle') }}</h3>
-          <div class="grid grid-cols-2 gap-3">
-            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('hist.field.empresa') }}</label><input [(ngModel)]="editForm.empresa" class="text-sm" /></div>
-            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('hist.field.oferta') }}</label><input [(ngModel)]="editForm.oferta_laboral" class="text-sm" /></div>
-            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('hist.field.reclutador') }}</label><input [(ngModel)]="editForm.nombre_empleado" class="text-sm" /></div>
-            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('hist.field.puestoRecl') }}</label><input [(ngModel)]="editForm.puesto_empleado" class="text-sm" /></div>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('hist.field.empresa') }}</label>
+              <select [(ngModel)]="editForm.empresa" class="text-sm" (ngModelChange)="onEditEmpresaChange($event)">
+                @for (e of editEmpresaOptions; track e) { <option [value]="e">{{ e }}</option> }
+              </select>
+            </div>
+            @if (editUsed().has('oferta_laboral')) {
+              <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('hist.field.oferta') }}</label><input [(ngModel)]="editForm.oferta_laboral" class="text-sm" /></div>
+            }
+            @if (editUsed().has('nombre_empleado')) {
+              <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('hist.field.reclutador') }}</label><input [(ngModel)]="editForm.nombre_empleado" class="text-sm" /></div>
+            }
+            @if (editUsed().has('puesto_empleado')) {
+              <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('hist.field.puestoRecl') }}</label><input [(ngModel)]="editForm.puesto_empleado" class="text-sm" /></div>
+            }
             <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('hist.field.estado') }}</label>
               <select [(ngModel)]="editForm.estado" class="text-sm">
                 @for (e of estados; track e.value) { @if (e.value !== '__otras__') { <option [value]="e.value">{{ estadoLabel(e.value) }}</option> } }
@@ -372,7 +394,7 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
 })
 export class HistorialComponent implements OnInit {
   postulaciones = signal<Postulacion[]>([]);
-  viewMode = signal<'tabla' | 'kanban' | 'empresa'>(localStorage.getItem('postulatool.hist.view') === 'kanban' ? 'kanban' : localStorage.getItem('postulatool.hist.view') === 'empresa' ? 'empresa' : 'tabla');
+  viewMode = signal<'tabla' | 'kanban' | 'empresa'>(localStorage.getItem('postulatool.hist.view') === 'kanban' ? 'tabla' : localStorage.getItem('postulatool.hist.view') === 'empresa' ? 'empresa' : 'tabla');
   filtroGlobal = signal('');
   categorias: Categoria[] = [];
   checkedCategorias = signal<Set<number>>(new Set());
@@ -389,6 +411,9 @@ export class HistorialComponent implements OnInit {
   editModal = signal(false);
   editForm: any = {};
   private editId: number | null = null;
+  editUsed = signal<Set<string>>(new Set());
+  editEmpresaOptions: string[] = [];
+  private editLinkOriginal = '';
 
   // Bulk selection
   selectionMode = signal(false);
@@ -422,7 +447,8 @@ export class HistorialComponent implements OnInit {
   empresasByName = computed(() => new Map(this.empresas().map(e => [e.nombre, e])));
   empresaSortDir = signal<'asc' | 'desc'>('asc');
   openEmpresas = signal<Set<string>>(new Set());
-  empresaLinkModal = signal<{ id: number; nombre: string; link: string } | null>(null);
+  openEmpresaMensajes = signal<Set<string>>(new Set());
+  empresaLinkModal = signal<{ id: number; nombre: string; link: string; linkOriginal: string } | null>(null);
 
   grupos = computed<EmpresaGrupo[]>(() => {
     const groups = groupByEmpresa(this.filteredSorted());
@@ -440,6 +466,10 @@ export class HistorialComponent implements OnInit {
     this.openEmpresas.update(s => { const n = new Set(s); if (n.has(nombre)) n.delete(nombre); else n.add(nombre); return n; });
   }
 
+  toggleEmpresaMensaje(nombre: string) {
+    this.openEmpresaMensajes.update(s => { const n = new Set(s); if (n.has(nombre)) n.delete(nombre); else n.add(nombre); return n; });
+  }
+
   findEmpresa(nombre: string): Empresa | undefined {
     return this.empresasByName().get(nombre);
   }
@@ -449,6 +479,13 @@ export class HistorialComponent implements OnInit {
     if (e?.link) return e.link;
     const g = this.grupos().find(x => x.nombre === nombre);
     return g?.items.find(p => p.link_empresa)?.link_empresa || '';
+  }
+
+  getEmpresaMensaje(nombre: string): string | null {
+    const e = this.findEmpresa(nombre);
+    if (e?.resultado_empresa) return e.resultado_empresa;
+    const g = this.grupos().find(x => x.nombre === nombre);
+    return g?.items.find(p => p.resultado_empresa)?.resultado_empresa || null;
   }
 
   postCountLabel(n: number): string {
@@ -461,16 +498,33 @@ export class HistorialComponent implements OnInit {
 
   openEmpresaLinkModal(nombre: string) {
     const e = this.findEmpresa(nombre);
-    if (e) this.empresaLinkModal.set({ id: e.id, nombre: e.nombre, link: e.link });
+    if (e) this.empresaLinkModal.set({ id: e.id, nombre: e.nombre, link: e.link, linkOriginal: e.link });
   }
 
   closeEmpresaLinkModal() { this.empresaLinkModal.set(null); }
 
-  saveEmpresaLink() {
+  async saveEmpresaLink() {
     const m = this.empresaLinkModal();
     if (!m) return;
     const original = this.empresas().find(e => e.id === m.id)?.nombre;
-    this.api.updateEmpresa(m.id, { nombre: m.nombre, link: m.link }).subscribe({
+    const linkNuevo = (m.link || '').trim();
+    const linkOriginal = m.linkOriginal || '';
+
+    if (linkNuevo !== linkOriginal) {
+      const n = this.postulaciones().filter(p => p.empresa === m.nombre || p.empresa === original).length;
+      const ok = await this.dialog.confirm(this.i18n.t('hist.linkChangeConfirm', {
+        empresa: m.nombre,
+        count: n,
+        from: linkOriginal || '—',
+        to: linkNuevo || '—',
+      }));
+      if (!ok) {
+        this.empresaLinkModal.set({ ...m, link: linkOriginal });
+        return;
+      }
+    }
+
+    this.api.updateEmpresa(m.id, { nombre: m.nombre, link: linkNuevo }).subscribe({
       next: () => {
         if (original && m.nombre !== original) {
           this.openEmpresas.update(s => {
@@ -550,6 +604,7 @@ export class HistorialComponent implements OnInit {
 
   @HostListener('document:keydown.escape')
   onEsc() {
+    if (this.empresaLinkModal()) { this.closeEmpresaLinkModal(); return; }
     if (this.editModal()) { this.closeEditModal(); return; }
     if (this.expandedId()) { this.expandedId.set(null); this.expandedMsg.set(null); return; }
   }
@@ -589,7 +644,7 @@ export class HistorialComponent implements OnInit {
     this.inited = true;
   }
 
-  load() { this.api.getPostulaciones({ trashed: this.trashMode() }).subscribe(d => this.postulaciones.set(d)); }
+  load() { this.loading.set(true); this.api.getPostulaciones({ trashed: this.trashMode() }).subscribe(d => { this.postulaciones.set(d); this.loading.set(false); }); }
 
   loadCategorias(onDone?: () => void) {
     this.api.getCategorias().subscribe(d => {
@@ -658,6 +713,9 @@ export class HistorialComponent implements OnInit {
   trashMode = signal(false);
   toggleTrash() {
     this.trashMode.update(m => !m);
+    this.expandedId.set(null);
+    this.expandedMsg.set(null);
+    this.loading.set(true);
     this.load();
   }
   async restorePost(id: number) {
@@ -876,40 +934,68 @@ export class HistorialComponent implements OnInit {
       contacto_empleado: p.contacto_empleado || '',
       notas: p.notas || '',
     };
+    this.editUsed.set(new Set(Object.keys(p.valores_usados || {})));
+    const opts = new Set<string>();
+    for (const e of this.empresas()) opts.add(e.nombre);
+    if (!opts.has(p.empresa)) opts.add(p.empresa);
+    this.editEmpresaOptions = [...opts];
+    this.editLinkOriginal = this.empresaLink(p.empresa) || '';
     this.editModal.set(true);
   }
 
   closeEditModal() { this.editModal.set(false); this.editId = null; }
 
+  onEditEmpresaChange(nombre: string) {
+    this.editForm.empresa = nombre;
+    this.editForm.link_empresa = this.empresaLink(nombre) || '';
+  }
+
   stagger(i: number): string {
     return `${Math.min(i * 30, 300)}ms`;
   }
 
-  saveEdit() {
+  async saveEdit() {
     if (this.editId === null) return;
-    this.api.updatePostulacion(this.editId, this.editForm).subscribe({
+    const linkNuevo = (this.editForm.link_empresa || '').trim();
+    const prev = this.postulaciones().find(x => x.id === this.editId);
+    const empresaNom = (this.editForm.empresa || '').trim();
+    const payload: any = {
+      empresa: empresaNom,
+      estado: this.editForm.estado,
+      notas: this.editForm.notas,
+      contacto_empleado: this.editForm.contacto_empleado,
+    };
+    if (this.editUsed().has('oferta_laboral')) payload.oferta_laboral = this.editForm.oferta_laboral;
+    if (this.editUsed().has('nombre_empleado')) payload.nombre_empleado = this.editForm.nombre_empleado;
+    if (this.editUsed().has('puesto_empleado')) payload.puesto_empleado = this.editForm.puesto_empleado;
+    if (prev && prev.empresa !== empresaNom) payload.link_empresa = linkNuevo;
+
+    const linkPropaga = this.empresaLink(empresaNom);
+    const linkCambio = linkNuevo !== (linkPropaga || '');
+
+    if (linkCambio) {
+      const n = this.postulaciones().filter(x => x.empresa === empresaNom).length;
+      const ok = await this.dialog.confirm(this.i18n.t('hist.linkChangeConfirm', {
+        empresa: empresaNom,
+        count: n,
+        from: linkPropaga || '—',
+        to: linkNuevo || '—',
+      }));
+      if (!ok) {
+        this.editForm.link_empresa = linkPropaga || '';
+        return;
+      }
+      const e = this.findEmpresa(empresaNom);
+      if (e) await new Promise<void>(r => this.api.updateEmpresa(e.id, { link: linkNuevo }).subscribe({ next: () => r(), error: () => r() }));
+      this.shared.empresasRefresh.update(v => v + 1);
+    }
+
+    this.api.updatePostulacion(this.editId, payload).subscribe({
       next: () => {
-        const prev = this.postulaciones().find(x => x.id === this.editId);
-        const oldName = (prev?.empresa || '').trim();
-        const newName = (this.editForm.empresa || '').trim();
-        const newLink = (this.editForm.link_empresa || '').trim();
-        if (newName) {
-          const e = this.findEmpresa(oldName) || this.findEmpresa(newName);
-          if (e) {
-            const nombreChanged = oldName !== '' && oldName !== newName;
-            const linkChanged = newLink !== '' && e.link !== newLink;
-            if (nombreChanged || linkChanged) {
-              this.api.updateEmpresa(e.id, { nombre: nombreChanged ? newName : undefined, link: linkChanged ? newLink : undefined })
-                .subscribe(() => this.shared.empresasRefresh.update(v => v + 1));
-            }
-          } else {
-            this.api.createEmpresa({ nombre: newName, link: newLink })
-              .subscribe(() => this.shared.empresasRefresh.update(v => v + 1));
-          }
-        }
         this.closeEditModal();
         this.load();
       },
+      error: () => this.dialog.toast(this.i18n.t('common.error.save')),
     });
   }
 }

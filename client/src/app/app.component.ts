@@ -34,12 +34,12 @@ import { DialogComponent } from './components/dialog/dialog.component';
       <app-login />
     } @else {
     <div class="min-h-screen" style="background-color: var(--bg);">
-      <div class="max-w-5xl mx-auto my-2 rounded-lg flex flex-col" style="background-color: var(--surface); border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+      <div class="w-full max-w-5xl mx-auto flex flex-col min-h-[100dvh] sm:min-h-0 sm:my-2 sm:rounded-lg" style="background-color: var(--surface); border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
         <!-- HEADER -->
-        <header class="px-6 py-3 flex items-center justify-between" style="border-bottom: 1px solid var(--border);">
+        <header class="px-3 sm:px-6 py-3 flex items-center justify-between gap-2 flex-wrap" style="border-bottom: 1px solid var(--border);">
           <h1 class="text-base font-semibold tracking-tight select-none">PostulaTool</h1>
-          <div class="flex items-center gap-2">
-            <span class="text-xs select-none" style="opacity: 0.6;">{{ auth.user()?.email }}</span>
+          <div class="flex items-center gap-2 flex-wrap justify-end">
+            <span class="text-xs select-none hidden sm:block" style="opacity: 0.6; max-width: 160px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap;">{{ auth.user()?.email }}</span>
             <button
               class="px-2.5 py-1 text-xs font-medium rounded border-0 cursor-pointer select-none"
               style="background: var(--surface); color: var(--accent);"
@@ -78,10 +78,10 @@ import { DialogComponent } from './components/dialog/dialog.component';
         </header>
 
         <!-- TABS -->
-        <nav class="flex px-6" style="border-bottom: 1px solid var(--border);">
+        <nav class="flex px-3 sm:px-6 overflow-x-auto" style="border-bottom: 1px solid var(--border);">
           @for (tab of tabs; track tab.id) {
             <button
-              class="relative px-4 py-2.5 text-sm font-medium cursor-pointer select-none transition-colors bg-transparent border-0 rounded-none"
+              class="relative px-2 sm:px-4 py-2.5 text-sm font-medium cursor-pointer select-none transition-colors bg-transparent border-0 rounded-none whitespace-nowrap"
               [style.color]="shared.activeTab() === tab.id ? 'var(--accent)' : ''"
               [style.opacity]="shared.activeTab() === tab.id ? '1' : '0.55'"
               (click)="shared.activeTab.set(tab.id)"
@@ -98,7 +98,7 @@ import { DialogComponent } from './components/dialog/dialog.component';
         </nav>
 
         <!-- CONTENT -->
-        <main class="flex-1 px-6 py-5 animate-fade-in">
+        <main class="flex-1 px-3 sm:px-6 py-5 animate-fade-in">
           <div [class.hidden]="shared.activeTab() !== 'postular'">
             <app-nueva-postulacion />
           </div>
