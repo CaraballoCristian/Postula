@@ -12,7 +12,7 @@ import { TR } from '../../i18n/es';
     <div class="min-h-screen flex items-center justify-center p-4" style="background-color: var(--bg);">
       <div class="w-full max-w-sm card animate-fade-in">
         <div class="text-center mb-6">
-          <h1 class="text-xl font-semibold tracking-tight select-none">PostulaTool</h1>
+          <h1 class="text-xl font-semibold tracking-tight select-none">Postulá</h1>
           <p class="text-sm mt-1" style="opacity: 0.55;">{{ i18n.t('auth.hint') }}</p>
         </div>
 

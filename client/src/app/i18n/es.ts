@@ -4,6 +4,8 @@ export const es = {
   'theme.accent': 'Color de acento',
   'theme.switchLang': 'Cambiar idioma (ES/EN)',
   'clipboard.copied': 'Copiado al portapapeles',
+  'pwa.update': 'Hay una nueva versión disponible',
+  'pwa.reload': 'Recargar',
   'lang.es': 'Español',
   'lang.en': 'Inglés',
 
