@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, ViewChild, ElementRef, effect } from '@angular/core';
+import { Component, OnInit, signal, ViewChild, ElementRef, effect, HostListener } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DropdownComponent } from '../dropdown/dropdown.component';
 import { ApiService } from '../../services/api.service';
@@ -75,7 +75,7 @@ interface SelectedTemplate {
         }
 
         @if (dynamicFields().length > 0) {
-          <div class="grid grid-cols-2 gap-x-3 gap-y-2">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2">
             @for (field of dynamicFields(); track field.key) {
               <div>
                 <label class="text-xs block mb-1" style="opacity: 0.5;">{{ labelFromKey(field.key) }}</label>
@@ -102,7 +102,7 @@ interface SelectedTemplate {
         }
 
         @if (selected().length > 0 && dynamicFields().length > 0) {
-          <div class="grid grid-cols-2 gap-x-3 gap-y-2">
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2">
             <div>
               <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('np.estado') }}</label>
               <app-dropdown
@@ -268,6 +268,11 @@ export class NuevaPostulacionComponent implements OnInit {
 
   openEmpresaModal() { this.empresaModalNombre = ''; this.empresaModalLink = ''; this.empresaModalOpen.set(true); }
   closeEmpresaModal() { this.empresaModalOpen.set(false); }
+
+  @HostListener('document:keydown.escape')
+  onEsc() {
+    if (this.empresaModalOpen()) this.closeEmpresaModal();
+  }
 
   crearEmpresa() {
     const nombre = this.empresaModalNombre.trim();

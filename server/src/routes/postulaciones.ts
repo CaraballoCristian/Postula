@@ -86,6 +86,10 @@ router.post('/', (req: AuthRequest, res: Response) => {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
+  // Opción A: el mensaje de empresa se guarda en la tabla `empresas` (una sola vez),
+  // no duplicado por postulación. La columna de la postulación queda NULL.
+  const msgEmp = typeof resultado_empresa === 'string' && resultado_empresa.trim() ? resultado_empresa.trim() : '';
+
   const result = stmt.run(
     userId,
     empresa || '',
@@ -97,7 +101,7 @@ router.post('/', (req: AuthRequest, res: Response) => {
     JSON.stringify(template_ids || []),
     JSON.stringify(valores_usados || {}),
     resultado_email || null,
-    resultado_empresa || null,
+    null,
     resultado_recruiter || null,
     notas || '',
     estado || 'solicitado',
@@ -106,6 +110,17 @@ router.post('/', (req: AuthRequest, res: Response) => {
     favorito || 0,
   );
 
+  if (msgEmp && empresa) {
+    const ename = String(empresa).trim();
+    const ex = db.prepare('SELECT id FROM empresas WHERE user_id = ? AND lower(nombre) = lower(?)').get(userId, ename) as any;
+    if (ex) {
+      db.prepare('UPDATE empresas SET resultado_empresa = ? WHERE id = ?').run(msgEmp, ex.id);
+    } else {
+      db.prepare('INSERT INTO empresas (user_id, nombre, link, resultado_empresa) VALUES (?, ?, ?, ?)')
+        .run(userId, ename, link_empresa || '', msgEmp);
+    }
+  }
+
   const row = db.prepare('SELECT * FROM postulaciones WHERE id = ?').get(result.lastInsertRowid) as any;
   res.status(201).json(parseRow(row));
 });
@@ -113,13 +128,14 @@ router.post('/', (req: AuthRequest, res: Response) => {
 router.put('/:id', (req: AuthRequest, res: Response) => {
   const { id } = req.params;
   const userId = req.userId!;
-  const existing = db.prepare('SELECT * FROM postulaciones WHERE id = ? AND user_id = ?').get(id, userId);
+  const existing = db.prepare('SELECT * FROM postulaciones WHERE id = ? AND user_id = ?').get(id, userId) as any;
   if (!existing) { res.status(404).json({ error: 'Postulación no encontrada' }); return; }
 
   const {
     empresa, oferta_laboral, categoria_id, idioma,
     nombre_empleado, puesto_empleado, estado,
     notas, link_empresa, contacto_empleado, favorito,
+    resultado_email, resultado_empresa, resultado_recruiter, valores_usados,
   } = req.body;
 
   if (categoria_id != null && !categoriaDelUsuario(Number(categoria_id), userId)) {
@@ -127,7 +143,9 @@ router.put('/:id', (req: AuthRequest, res: Response) => {
     return;
   }
 
-  db.prepare(`
+  const msgEmp = typeof resultado_empresa === 'string' && resultado_empresa.trim() ? resultado_empresa.trim() : '';
+
+  const result = db.prepare(`
     UPDATE postulaciones SET
       empresa = COALESCE(?, empresa),
       oferta_laboral = COALESCE(?, oferta_laboral),
@@ -139,7 +157,10 @@ router.put('/:id', (req: AuthRequest, res: Response) => {
       notas = COALESCE(?, notas),
       link_empresa = COALESCE(?, link_empresa),
       contacto_empleado = COALESCE(?, contacto_empleado),
-      favorito = COALESCE(?, favorito)
+      favorito = COALESCE(?, favorito),
+      resultado_email = COALESCE(?, resultado_email),
+      resultado_recruiter = COALESCE(?, resultado_recruiter),
+      valores_usados = COALESCE(?, valores_usados)
     WHERE id = ? AND user_id = ?
   `).run(
     empresa !== undefined ? empresa : null,
@@ -153,9 +174,23 @@ router.put('/:id', (req: AuthRequest, res: Response) => {
     link_empresa !== undefined ? link_empresa : null,
     contacto_empleado !== undefined ? contacto_empleado : null,
     favorito !== undefined ? favorito : null,
+    resultado_email !== undefined ? resultado_email : null,
+    resultado_recruiter !== undefined ? resultado_recruiter : null,
+    valores_usados !== undefined ? JSON.stringify(valores_usados) : null,
     id,
     userId,
   );
+
+  if (msgEmp && existing.empresa) {
+    const ename = String(existing.empresa).trim();
+    const ex = db.prepare('SELECT id FROM empresas WHERE user_id = ? AND lower(nombre) = lower(?)').get(userId, ename) as any;
+    if (ex) {
+      db.prepare('UPDATE empresas SET resultado_empresa = ? WHERE id = ?').run(msgEmp, ex.id);
+    } else {
+      db.prepare('INSERT INTO empresas (user_id, nombre, link, resultado_empresa) VALUES (?, ?, ?, ?)')
+        .run(userId, ename, link_empresa || '', msgEmp);
+    }
+  }
 
   const row = db.prepare('SELECT * FROM postulaciones WHERE id = ?').get(id) as any;
   res.json(parseRow(row));

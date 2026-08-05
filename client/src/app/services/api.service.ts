@@ -75,10 +75,10 @@ export class ApiService {
   getEmpresas(): Observable<Empresa[]> {
     return this.http.get<Empresa[]>(`${this.base}/empresas`);
   }
-  createEmpresa(data: { nombre: string; link?: string }): Observable<Empresa> {
+  createEmpresa(data: { nombre: string; link?: string; resultado_empresa?: string | null }): Observable<Empresa> {
     return this.http.post<Empresa>(`${this.base}/empresas`, data);
   }
-  updateEmpresa(id: number, data: { nombre?: string; link?: string }): Observable<Empresa> {
+  updateEmpresa(id: number, data: { nombre?: string; link?: string; resultado_empresa?: string | null }): Observable<Empresa> {
     return this.http.put<Empresa>(`${this.base}/empresas/${id}`, data);
   }
   deleteEmpresa(id: number): Observable<any> {

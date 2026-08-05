@@ -112,7 +112,7 @@ import { I18nService } from "../../services/i18n.service";
           <div class="space-y-3">
             <input [(ngModel)]="formNombre" [placeholder]="i18n.t('tpl.nombrePlaceholder')" [style.border-color]="nombreError() ? '#ef4444' : ''" (ngModelChange)="nombreError.set('')" />
             @if (nombreError()) { <span class="text-xs" style="color: #ef4444;">{{ nombreError() }}</span> }
-            <div class="grid grid-cols-3 gap-3">
+            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <app-dropdown
                 id="formCat"
                 [selected]="formCategoriaId"

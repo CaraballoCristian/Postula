@@ -7,8 +7,8 @@ import { I18nService } from '../../services/i18n.service';
   standalone: true,
   template: `
     @if (dialog.state().open && dialog.state().type === 'confirm') {
-      <div class="fixed inset-0 z-[100] flex items-center justify-center" style="background: rgba(0,0,0,0.3);">
-        <div class="card mx-4 max-w-sm w-full animate-fade-in" (click)="$event.stopPropagation()">
+      <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh]" style="background: rgba(0,0,0,0.3);">
+        <div class="card mx-4 max-w-sm w-full animate-fade-in max-h-[80vh] overflow-y-auto" (click)="$event.stopPropagation()">
           <p class="text-sm mb-4">{{ dialog.state().message }}</p>
           <div class="flex justify-end gap-2">
             <button class="btn btn-outline" (click)="cancel()">{{ i18n.t('dialog.cancel') }}</button>

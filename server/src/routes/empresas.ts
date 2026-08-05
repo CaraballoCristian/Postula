@@ -7,7 +7,7 @@ router.use(requireAuth);
 
 router.get('/', (req: AuthRequest, res: Response) => {
   const rows = db.prepare(`
-    SELECT e.id, e.nombre, e.link, e.created_at,
+    SELECT e.id, e.nombre, e.link, e.resultado_empresa, e.created_at,
       (SELECT COUNT(*) FROM postulaciones p
         WHERE p.user_id = e.user_id AND p.empresa = e.nombre AND p.deleted_at IS NULL) AS post_count,
       (SELECT COUNT(*) FROM postulaciones p
@@ -20,14 +20,15 @@ router.get('/', (req: AuthRequest, res: Response) => {
 });
 
 router.post('/', (req: AuthRequest, res: Response) => {
-  const { nombre, link } = req.body;
+  const { nombre, link, resultado_empresa } = req.body;
   const n = typeof nombre === 'string' ? nombre.trim() : '';
   if (!n) { res.status(400).json({ error: 'El nombre es requerido' }); return; }
   const l = typeof link === 'string' ? link.trim() : '';
+  const msg = typeof resultado_empresa === 'string' ? resultado_empresa : null;
   const exists = db.prepare('SELECT id FROM empresas WHERE user_id = ? AND lower(nombre) = lower(?)').get(req.userId, n);
   if (exists) { res.status(409).json({ error: 'EMPRESA_EXISTE', message: 'Ya existe esa empresa' }); return; }
   try {
-    const result = db.prepare('INSERT INTO empresas (user_id, nombre, link) VALUES (?, ?, ?)').run(req.userId, n, l);
+    const result = db.prepare('INSERT INTO empresas (user_id, nombre, link, resultado_empresa) VALUES (?, ?, ?, ?)').run(req.userId, n, l, msg);
     const row = db.prepare('SELECT * FROM empresas WHERE id = ?').get(result.lastInsertRowid);
     res.status(201).json(row);
   } catch (e: any) {
@@ -41,15 +42,16 @@ router.put('/:id', (req: AuthRequest, res: Response) => {
   const existing = db.prepare('SELECT * FROM empresas WHERE id = ? AND user_id = ?').get(req.params.id, userId) as any;
   if (!existing) { res.status(404).json({ error: 'Empresa no encontrada' }); return; }
 
-  const { nombre, link } = req.body;
+  const { nombre, link, resultado_empresa } = req.body;
   const newNombre = typeof nombre === 'string' && nombre.trim() ? nombre.trim() : existing.nombre;
   const newLink = typeof link === 'string' ? link.trim() : existing.link;
+  const newMsg = typeof resultado_empresa === 'string' ? resultado_empresa : existing.resultado_empresa;
   const renamed = newNombre !== existing.nombre;
 
   try {
     let affectedPostulaciones = 0;
     db.transaction(() => {
-      db.prepare('UPDATE empresas SET nombre = ?, link = ? WHERE id = ? AND user_id = ?').run(newNombre, newLink, req.params.id, userId);
+      db.prepare('UPDATE empresas SET nombre = ?, link = ?, resultado_empresa = ? WHERE id = ? AND user_id = ?').run(newNombre, newLink, newMsg, req.params.id, userId);
       if (renamed) {
         db.prepare('UPDATE postulaciones SET empresa = ? WHERE empresa = ? AND user_id = ?').run(newNombre, existing.nombre, userId);
       }
