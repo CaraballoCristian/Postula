@@ -6,6 +6,8 @@ export const en: Record<TR, string> = {
   'theme.accent': 'Accent color',
   'theme.switchLang': 'Switch language (ES/EN)',
   'clipboard.copied': 'Copied to clipboard',
+  'pwa.update': 'A new version is available',
+  'pwa.reload': 'Reload',
   'lang.es': 'Spanish',
   'lang.en': 'English',
 
