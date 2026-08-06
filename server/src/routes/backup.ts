@@ -30,9 +30,11 @@ router.get('/export', (req: AuthRequest, res: Response) => {
   res.json({ version: db.pragma('user_version', { simple: true }), exported_at: new Date().toISOString(), ...data });
 });
 
-// Import/restaurar: merge por CONTENIDO con reasignación de ids. No depende del id
-// de origen (que puede estar ocupado por otro usuario en una base compartida), por lo
-// que restaurar a cualquier cuenta (vacía o con datos) no descarta filas válidas.
+// Import/restaurar: trae SÓLO el historial (postulaciones). No modifica categorias,
+// templates, config, idiomas ni tags (evita conflictos). Las categorías/plantillas del
+// backup se usan únicamente como referencia (solo lectura) para remapear por nombre la
+// categoría/plantilla de cada postulación hacia las YA existentes en la cuenta; si no
+// hay match, la referencia queda vacía.
 router.post('/import', (req: AuthRequest, res: Response) => {
   const data = req.body?.data;
   if (!data || typeof data !== 'object') {
@@ -43,83 +45,38 @@ router.post('/import', (req: AuthRequest, res: Response) => {
 
   const num = (v: unknown, fallback: number) => { const n = Number(v); return Number.isNaN(n) ? fallback : n; };
 
-  const merge = db.transaction(() => {
-    let skipped = 0;
-
-    // Mapeos de ids del origen -> id nuevo en esta cuenta.
-    const catMap = new Map<number, number>();
-    const tagMap = new Map<number, number>();
-    const idiMap = new Map<number, number>();
-    const tplMap = new Map<number, number>();
-
-    // ── Categorías: por (user, nombre) ──
+  // ── Referencia (solo lectura) para remapear por nombre ──
+  // catMap: id de categoría del origen -> id (o null) de categoría EXISTENTE con el mismo nombre.
+  // tplMap: id de plantilla del origen -> id de plantilla EXISTENTE con igual contenido.
+  const buildCatMap = () => {
+    const map = new Map<number, number | null>();
     const getCat = db.prepare('SELECT id FROM categorias WHERE user_id = ? AND nombre = ?');
-    const insCat = db.prepare('INSERT INTO categorias (user_id, nombre, created_at) VALUES (?, ?, ?)');
     for (const c of (data.categorias ?? []) as any[]) {
       const name = String(c.nombre || '').trim();
       if (!name) continue;
-      let id = (getCat.get(userId, name) as any)?.id as number | undefined;
-      if (!id) id = insCat.run(userId, name, c.created_at || new Date().toISOString()).lastInsertRowid as number;
-      catMap.set(num(c.id, 0), id);
+      const found = getCat.get(userId, name) as any;
+      map.set(num(c.id, 0), found ? found.id : null);
     }
+    return map;
+  };
+  const catMap = buildCatMap();
 
-    // ── Idiomas ──
-    const getIdi = db.prepare('SELECT id FROM idiomas WHERE user_id = ? AND nombre = ?');
-    const insIdi = db.prepare('INSERT INTO idiomas (user_id, nombre, created_at) VALUES (?, ?, ?)');
-    for (const i of (data.idiomas ?? []) as any[]) {
-      const name = String(i.nombre || '').trim();
-      if (!name) continue;
-      let id = (getIdi.get(userId, name) as any)?.id as number | undefined;
-      if (!id) id = insIdi.run(userId, name, i.created_at || new Date().toISOString()).lastInsertRowid as number;
-      idiMap.set(num(i.id, 0), id);
-    }
-
-    // ── Tags ──
-    const getTag = db.prepare('SELECT id FROM tags WHERE user_id = ? AND nombre = ?');
-    const insTag = db.prepare('INSERT INTO tags (user_id, nombre, color, created_at) VALUES (?, ?, ?, ?)');
-    for (const t of (data.tags ?? []) as any[]) {
-      const name = String(t.nombre || '').trim();
-      if (!name) continue;
-      let id = (getTag.get(userId, name) as any)?.id as number | undefined;
-      if (!id) id = insTag.run(userId, name, t.color ?? '', t.created_at || new Date().toISOString()).lastInsertRowid as number;
-      tagMap.set(num(t.id, 0), id);
-    }
-
-    // ── Templates (match por contenido + categoría mapeada) ──
+  // Template matcheo por contenido del backup hacia la misma categoría ya remapeada.
+  const buildTplMap = () => {
+    const map = new Map<number, number | null>();
     const getTpl = db.prepare(`SELECT id FROM templates WHERE user_id = ? AND categoria_id = ? AND idioma = ? AND tipo = ? AND nombre = ? AND contenido = ? AND orden = ?`);
-    const insTpl = db.prepare(`INSERT INTO templates (user_id, categoria_id, idioma, tipo, nombre, contenido, orden, created_at, updated_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
     for (const t of (data.templates ?? []) as any[]) {
       const catId = catMap.get(num(t.categoria_id, 0)) ?? null;
-      let id = (getTpl.get(userId, catId, t.idioma, t.tipo, t.nombre, t.contenido ?? '', t.orden ?? 0) as any)?.id as number | undefined;
-      if (!id) {
-        id = insTpl.run(
-          userId, catId, t.idioma, t.tipo, t.nombre, t.contenido ?? '', t.orden ?? 0,
-          t.created_at || new Date().toISOString(), t.updated_at || t.created_at || new Date().toISOString()
-        ).lastInsertRowid as number;
-      }
-      tplMap.set(num(t.id, 0), id);
+      const found = getTpl.get(userId, catId, t.idioma, t.tipo, t.nombre, t.contenido ?? '', t.orden ?? 0) as any;
+      map.set(num(t.id, 0), found ? found.id : null);
     }
+    return map;
+  };
+  const tplMap = buildTplMap();
 
-    // ── Config (upsert por clave; remapear default_categoria_id) ──
-    const getCfg = db.prepare('SELECT id FROM config WHERE user_id = ? AND clave = ?');
-    const insCfg = db.prepare('INSERT INTO config (user_id, clave, valor) VALUES (?, ?, ?)');
-    const updCfg = db.prepare('UPDATE config SET valor = ? WHERE id = ?');
-    for (const c of (data.config ?? []) as any[]) {
-      const clave = String(c.clave || '').trim();
-      if (!clave) continue;
-      let valor = String(c.valor ?? '');
-      if (clave === 'default_categoria_id') {
-        const mapped = catMap.get(num(c.valor, 0));
-        if (mapped != null) valor = String(mapped);
-      }
-
-      const existing = getCfg.get(userId, clave) as any;
-      if (existing) updCfg.run(valor, existing.id);
-      else insCfg.run(userId, clave, valor);
-    }
-
-    // ── Postulaciones (id nuevo; dedup por contenido significativo) ──
+  // ── Postulaciones ──
+  const merge = db.transaction(() => {
+    let skipped = 0;
     const mapTpl = (ids: any): number[] => {
       const out: number[] = [];
       for (const x of (ids ?? [])) {
@@ -152,7 +109,6 @@ router.post('/import', (req: AuthRequest, res: Response) => {
         p.favorito ?? 0, p.deleted_at ?? null, fecha, p.created_at || fecha,
       );
     }
-
     return { skipped };
   });
 
