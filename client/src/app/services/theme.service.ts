@@ -5,12 +5,17 @@ export class ThemeService {
   accentColor = signal('#2563eb');
   isDark = signal(true);
 
+  // 'full' → app en pantalla completa (modo PWA); 'framed' → franja centrada (modo web)
+  layoutMode = signal<'full' | 'framed'>(window.matchMedia('(display-mode: standalone)').matches ? 'full' : 'framed');
+
   constructor() {
     const savedAccent = localStorage.getItem('accent-color');
     const savedDark = localStorage.getItem('dark-mode');
+    const savedLayout = localStorage.getItem('layout-mode');
 
     if (savedAccent) this.accentColor.set(savedAccent);
     if (savedDark) this.isDark.set(savedDark === 'true');
+    if (savedLayout) this.layoutMode.set(savedLayout === 'full' ? 'full' : 'framed');
 
     effect(() => {
       const el = document.documentElement;
@@ -25,5 +30,6 @@ export class ThemeService {
 
     effect(() => localStorage.setItem('accent-color', this.accentColor()));
     effect(() => localStorage.setItem('dark-mode', String(this.isDark())));
+    effect(() => localStorage.setItem('layout-mode', this.layoutMode()));
   }
 }

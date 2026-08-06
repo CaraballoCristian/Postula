@@ -3,6 +3,8 @@ export const es = {
   'theme.toggle': 'Modo oscuro / claro',
   'theme.accent': 'Color de acento',
   'theme.switchLang': 'Cambiar idioma (ES/EN)',
+  'layout.toFull': 'Pantalla completa (modo PWA)',
+  'layout.toFramed': 'Vista centrada para leer (modo web)',
   'clipboard.copied': 'Copiado al portapapeles',
   'pwa.update': 'Hay una nueva versión disponible',
   'pwa.reload': 'Recargar',
@@ -43,10 +45,39 @@ export const es = {
   'auth.hint': 'Ingresá para acceder a tu espacio de postulaciones.',
 
   // tabs
+  'tab.dashboard': 'Dashboard',
   'tab.postular': 'Nueva Postulación',
   'tab.historial': 'Historial',
   'tab.templates': 'Templates',
   'tab.config': 'Configuración',
+
+  // dashboard
+  'dash.today': 'Día',
+  'dash.week': 'Semana',
+  'dash.month': 'Mes',
+  'dash.all': 'Todo',
+  'dash.desde': 'Desde',
+  'dash.hasta': 'Hasta',
+  'dash.total': 'Enviadas',
+  'dash.totalHint': '{{month}} este mes · {{all}} en total',
+  'dash.weekComp': 'vs. semana ant.',
+  'dash.weekCompHint': '{{cur}} esta semana · {{prev}} anterior',
+  'dash.streak': 'Racha',
+  'dash.streakHint': '{{days}} días seguidos postulando',
+  'dash.tendencia': 'Postulaciones por semana',
+  'dash.tendenciaDia': 'Postulaciones por día',
+  'dash.tendenciaMes': 'Postulaciones por mes',
+  'dash.vsAyer': 'vs. ayer',
+  'dash.vsAyerHint': '{{cur}} hoy · {{prev}} ayer',
+  'dash.vsMes': 'vs. mes pasado',
+  'dash.vsMesHint': '{{cur}} este mes · {{prev}} anterior',
+  'dash.byEstado': 'Distribución por estado',
+  'dash.byCategoria': 'Por categoría',
+  'dash.byIdioma': 'Por idioma',
+  'dash.sinEstado': 'Sin estado',
+  'dash.sinCategoria': 'Sin categoría',
+  'dash.sinIdioma': 'Sin idioma',
+  'dash.empty': 'Sin postulaciones en este período',
 
   // dialog
   'dialog.cancel': 'Cancelar',
@@ -54,6 +85,8 @@ export const es = {
 
   // common
   'common.loading': 'Cargando...',
+  'common.showPw': 'Mostrar contraseña',
+  'common.hidePw': 'Ocultar contraseña',
   'common.select': 'Seleccionar',
   'common.cancel': 'Cancelar',
   'common.save': 'Guardar',

@@ -10,6 +10,7 @@ import { TabName } from './models/interfaces';
 import { LoginComponent } from './components/login/login.component';
 import { ConfiguracionComponent } from './components/configuracion/configuracion.component';
 import { EditorTemplatesComponent } from './components/editor-templates/editor-templates.component';
+import { DashboardComponent } from './components/dashboard/dashboard.component';
 import { NuevaPostulacionComponent } from './components/nueva-postulacion/nueva-postulacion.component';
 import { HistorialComponent } from './components/historial/historial.component';
 import { DialogComponent } from './components/dialog/dialog.component';
@@ -22,6 +23,7 @@ import { DialogComponent } from './components/dialog/dialog.component';
     LoginComponent,
     ConfiguracionComponent,
     EditorTemplatesComponent,
+    DashboardComponent,
     NuevaPostulacionComponent,
     HistorialComponent,
     DialogComponent,
@@ -35,10 +37,10 @@ import { DialogComponent } from './components/dialog/dialog.component';
       <app-login />
     } @else {
     <div class="min-h-screen" style="background-color: var(--bg);">
-      <div class="w-full max-w-5xl mx-auto flex flex-col min-h-[100dvh] sm:min-h-0 sm:my-2 sm:rounded-lg" style="background-color: var(--surface); border: 1px solid var(--border); box-shadow: 0 1px 3px rgba(0,0,0,0.06);">
+      <div class="app-shell flex flex-col overflow-hidden" [class.force-full]="theme.layoutMode() === 'full'" [class.force-framed]="theme.layoutMode() === 'framed'" style="background-color: var(--surface);">
         <!-- HEADER -->
-        <header class="px-3 sm:px-6 py-3 flex items-center justify-between gap-2 flex-wrap" style="border-bottom: 1px solid var(--border);">
-          <h1 class="flex items-center gap-2 text-base font-semibold tracking-tight select-none">
+        <header class="px-3 sm:px-6 py-3 flex items-center justify-between gap-2 flex-wrap shrink-0" style="border-bottom: 1px solid var(--border); padding-top: calc(env(safe-area-inset-top) + 0.75rem);">
+          <h1 class="flex items-center gap-2 font-display text-base font-semibold tracking-tight select-none">
             <img src="logo.png" alt="Postulá" class="w-6 h-6 rounded-sm" />
             Postulá
           </h1>
@@ -73,6 +75,27 @@ import { DialogComponent } from './components/dialog/dialog.component';
             />
             <span class="w-px h-5" style="background: var(--border);" aria-hidden="true"></span>
             <button
+              class="view-toggle w-8 h-8 rounded-md items-center justify-center text-base border-0 cursor-pointer transition-colors"
+              [style.color]="theme.layoutMode() === 'framed' ? 'var(--text)' : 'var(--text)'"
+              (click)="toggleLayout()"
+              [title]="theme.layoutMode() === 'full' ? i18n.t('layout.toFramed') : i18n.t('layout.toFull')"
+            >
+              @if (theme.layoutMode() === 'full') {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <rect x="7" y="4" width="10" height="16" rx="2"></rect>
+                  <line x1="12" y1="20" x2="12" y2="20.1"></line>
+                </svg>
+              } @else {
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                  <path d="M4 9V4h5"></path>
+                  <path d="M20 9V4h-5"></path>
+                  <path d="M4 15v5h5"></path>
+                  <path d="M20 15v5h-5"></path>
+                </svg>
+              }
+            </button>
+            <span class="w-px h-5" style="background: var(--border);" aria-hidden="true"></span>
+            <button
               class="px-2.5 py-1 text-xs font-medium rounded border-0 cursor-pointer select-none"
               style="background: var(--surface); color: var(--accent);"
               [title]="i18n.t('theme.switchLang')"
@@ -82,7 +105,7 @@ import { DialogComponent } from './components/dialog/dialog.component';
         </header>
 
         <!-- TABS -->
-        <nav class="flex px-3 sm:px-6 overflow-x-auto" style="border-bottom: 1px solid var(--border);">
+        <nav class="flex px-3 sm:px-6 overflow-x-auto shrink-0" style="border-bottom: 1px solid var(--border);">
           @for (tab of tabs; track tab.id) {
             <button
               class="relative px-2 sm:px-4 py-2.5 text-sm font-medium cursor-pointer select-none transition-colors bg-transparent border-0 rounded-none whitespace-nowrap"
@@ -102,8 +125,11 @@ import { DialogComponent } from './components/dialog/dialog.component';
         </nav>
 
         <!-- CONTENT -->
-        <main class="flex-1 px-3 sm:px-6 py-5 animate-fade-in">
-          <div [class.hidden]="shared.activeTab() !== 'postular'">
+        <main class="flex-1 px-3 sm:px-6 overflow-y-auto animate-fade-in" style="padding-bottom: max(env(safe-area-inset-bottom), 1.25rem);">
+          <div [class.hidden]="shared.activeTab() !== 'dashboard'" class="pt-5">
+            <app-dashboard />
+          </div>
+          <div [class.hidden]="shared.activeTab() !== 'postular'" class="pt-5">
             <app-nueva-postulacion />
           </div>
           <div [class.hidden]="shared.activeTab() !== 'historial'">
@@ -112,7 +138,7 @@ import { DialogComponent } from './components/dialog/dialog.component';
           <div [class.hidden]="shared.activeTab() !== 'templates'">
             <app-editor-templates />
           </div>
-          <div [class.hidden]="shared.activeTab() !== 'config'">
+          <div [class.hidden]="shared.activeTab() !== 'config'" class="pt-5">
             <app-configuracion />
           </div>
         </main>
@@ -146,6 +172,7 @@ import { DialogComponent } from './components/dialog/dialog.component';
 })
 export class AppComponent {
   tabs: { id: TabName; labelKey: any }[] = [
+    { id: 'dashboard', labelKey: 'tab.dashboard' },
     { id: 'postular', labelKey: 'tab.postular' },
     { id: 'historial', labelKey: 'tab.historial' },
     { id: 'templates', labelKey: 'tab.templates' },
@@ -174,6 +201,10 @@ export class AppComponent {
 
   logout() {
     this.auth.logout();
-    this.shared.activeTab.set('postular');
+    this.shared.activeTab.set('dashboard');
+  }
+
+  toggleLayout() {
+    this.theme.layoutMode.set(this.theme.layoutMode() === 'full' ? 'framed' : 'full');
   }
 }
