@@ -6,6 +6,7 @@ import { DialogService } from '../../services/dialog.service';
 import { SharedStateService } from '../../services/shared-state.service';
 import { ConfigEntry, Categoria, Idioma, Tag, Postulacion } from '../../models/interfaces';
 import { I18nService } from '../../services/i18n.service';
+import { firstValueFrom } from 'rxjs';
 import { PasswordFieldComponent } from '../password-field/password-field.component';
 
 type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags' | 'backup' | 'seguridad';
@@ -484,19 +485,38 @@ export class ConfiguracionComponent implements OnInit {
   }
 
   // ── BACKUP ──
-  exportBackup() {
-    this.api.exportBackup().subscribe((data) => {
-      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `postulatool-backup-${Date.now()}.json`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      this.dialog.toast(this.i18n.t('backup.exportDone'));
-    });
+  async exportBackup() {
+    const data = await firstValueFrom(this.api.exportBackup()) as any;
+    if (data == null) return;
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const suggestedName = `postulatool-backup-${Date.now()}.json`;
+
+    // File System Access API: abre SIEMPRE el diálogo nativo para elegir dónde/con qué nombre (Chrome/Edge inclusive la PWA).
+    const picker = (window as any).showSaveFilePicker;
+    if (typeof picker === 'function') {
+      try {
+        const handle = await picker.call(window, { suggestedName, types: [{ description: 'JSON', accept: { 'application/json': ['.json'] } }] });
+        const writable = await handle.createWritable();
+        await writable.write(blob);
+        await writable.close();
+        this.dialog.toast(this.i18n.t('backup.exportDone'));
+        return;
+      } catch (err: any) {
+        // Cancelación del diálogo o error no bloqueante: no mostrar toast de error.
+        if (err?.name === 'AbortError') return;
+      }
+    }
+
+    // Fallback (Firefox/Safari): descarga directa a la carpeta de descargas.
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = suggestedName;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+    this.dialog.toast(this.i18n.t('backup.exportDone'));
   }
 
   onFileSelected(e: Event) {

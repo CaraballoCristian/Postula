@@ -255,13 +255,13 @@ export const es = {
   'cfg.elegiDestino': 'Elegí una etiqueta destino',
 
   // backup
-  'backup.section': 'Backup',
-  'backup.intro': 'Descargá o restaurá una copia completa de tus datos.',
+'backup.section': 'Backup',
+  'backup.intro': 'Descargá o restaurá una copia de tu historial. Al restaurar solo se recuperan las postulaciones; no se modifican categorías, plantillas ni configuración.',
   'backup.export': 'Exportar datos',
   'backup.import': 'Restaurar backup',
   'backup.exportDone': 'Backup exportado',
-  'backup.importConfirm': '¿Importar este backup? Se fusionarán los datos con la base actual (por ID).',
-  'backup.importDone': 'Backup importado',
+  'backup.importConfirm': '¿Restaurar el historial (postulaciones)? No se modificarán categorías, plantillas ni configuración.',
+  'backup.importDone': 'Historial restaurado',
   'backup.importError': 'Error al importar el backup',
 
   // papelera
