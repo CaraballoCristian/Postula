@@ -31,9 +31,11 @@ function publicUser(row: any) {
   return { id: row.id, email: row.email, created_at: row.created_at };
 }
 
-function frontendRedirect(req: Request, query: Record<string, string>): string {
+/** Redirect relativo: el navegador lo resuelve sobre la URL actual, evitando
+ * depender del protocolo/host percibido tras el proxy (y posibles loops http/https). */
+function frontendRedirect(query: Record<string, string>): string {
   const params = new URLSearchParams(query).toString();
-  return `${req.protocol}://${req.get('host')}/${params ? `?${params}` : ''}`;
+  return params ? `/?${params}` : '/';
 }
 
 const OAUTH_STATE_COOKIE = 'postulatool_oauth_state';
@@ -66,14 +68,14 @@ router.get('/google/callback', async (req: Request, res: Response) => {
 
   // Cancelación por el usuario.
   if (error) {
-    return res.redirect(frontendRedirect(req, { oauth_error: '1' }));
+    return res.redirect(frontendRedirect({ oauth_error: '1' }));
   }
 
   const stored = (req.cookies && req.cookies[OAUTH_STATE_COOKIE]) as string | undefined;
   res.clearCookie(OAUTH_STATE_COOKIE, { httpOnly: true, secure: req.protocol === 'https', sameSite: 'lax', path: '/' });
 
   if (!code || !state || !stored || state !== stored) {
-    return res.redirect(frontendRedirect(req, { oauth_error: '1' }));
+    return res.redirect(frontendRedirect({ oauth_error: '1' }));
   }
 
   try {
@@ -89,18 +91,18 @@ router.get('/google/callback', async (req: Request, res: Response) => {
       }),
     });
     if (!tokenRes.ok) {
-      return res.redirect(frontendRedirect(req, { oauth_error: '1' }));
+      return res.redirect(frontendRedirect({ oauth_error: '1' }));
     }
     const tokens = (await tokenRes.json()) as { access_token?: string };
     if (!tokens.access_token) {
-      return res.redirect(frontendRedirect(req, { oauth_error: '1' }));
+      return res.redirect(frontendRedirect({ oauth_error: '1' }));
     }
 
     const infoRes = await fetch(GOOGLE_USERINFO_URL, {
       headers: { Authorization: `Bearer ${tokens.access_token}` },
     });
     if (!infoRes.ok) {
-      return res.redirect(frontendRedirect(req, { oauth_error: '1' }));
+      return res.redirect(frontendRedirect({ oauth_error: '1' }));
     }
     const info = (await infoRes.json()) as {
       email?: string;
@@ -108,7 +110,7 @@ router.get('/google/callback', async (req: Request, res: Response) => {
     };
 
     if (!info.email || info.email_verified !== true) {
-      return res.redirect(frontendRedirect(req, { oauth_error: '1' }));
+      return res.redirect(frontendRedirect({ oauth_error: '1' }));
     }
 
     const email = info.email.trim().toLowerCase();
@@ -124,20 +126,20 @@ router.get('/google/callback', async (req: Request, res: Response) => {
       } catch (e) {
         db.prepare('DELETE FROM users WHERE id = ?').run(userId);
         console.error('Fallo el seed del usuario OAuth', e);
-        return res.redirect(frontendRedirect(req, { oauth_error: '1' }));
+        return res.redirect(frontendRedirect({ oauth_error: '1' }));
       }
       user = findUserById(userId);
     }
 
     const token = signToken({ id: user.id, email: user.email });
-    return res.redirect(frontendRedirect(req, {
+    return res.redirect(frontendRedirect({
       oauth_token: token,
       oauth_email: user.email,
       oauth_id: String(user.id),
     }));
   } catch (e) {
     console.error('Error en callback de Google OAuth', e);
-    return res.redirect(frontendRedirect(req, { oauth_error: '1' }));
+    return res.redirect(frontendRedirect({ oauth_error: '1' }));
   }
 });
 
