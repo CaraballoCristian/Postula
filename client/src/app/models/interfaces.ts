@@ -85,7 +85,7 @@ export interface GenerarPayload {
   idioma: string;
 }
 
-export type TabName = 'postular' | 'historial' | 'templates' | 'config';
+export type TabName = 'dashboard' | 'postular' | 'historial' | 'templates' | 'config';
 
 export interface EstadoOption {
   value: string;

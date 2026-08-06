@@ -18,8 +18,9 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
   imports: [FormsModule, DragDropModule, PostulacionTableComponent],
   template: `
     <!-- FILTROS + BATCH ACTIONS -->
-    <div class="flex flex-col gap-2 mb-4">
-      <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
+    <div class="sticky top-0 z-20 mb-4 rounded-b-md" style="background-color: var(--surface); border-bottom: 1px solid var(--border); padding-top: 1.25rem; padding-bottom: 0.75rem;">
+      <div class="flex flex-col gap-2">
+        <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
         
       <div class="relative sm:w-4/12">
           <input [ngModel]="filtroGlobal()" (ngModelChange)="filtroGlobal.set($event)" [placeholder]="i18n.t('hist.buscar')" class="text-sm w-full pr-7" />
@@ -123,6 +124,7 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
         }
         </div>
         
+      </div>
       </div>
 
     @if (loading()) {

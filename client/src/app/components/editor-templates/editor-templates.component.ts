@@ -18,7 +18,8 @@ import { I18nService } from "../../services/i18n.service";
   standalone: true,
   imports: [FormsModule, DropdownComponent],
   template: `
-    <div class="flex flex-col sm:flex-row gap-2 sm:gap-3 mb-4">
+    <div class="sticky top-0 z-20 mb-4" style="background-color: var(--surface); border-bottom: 1px solid var(--border); padding-top: 1.25rem; padding-bottom: 0.75rem;">
+    <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
       <app-dropdown
         id="filtroCat"
         class="sm:w-1/6 "
@@ -41,6 +42,7 @@ import { I18nService } from "../../services/i18n.service";
       >
         {{ i18n.t('tpl.nuevo') }}
       </button>
+    </div>
     </div>
 
     @if (loading()) {

@@ -6,13 +6,14 @@ import { DialogService } from '../../services/dialog.service';
 import { SharedStateService } from '../../services/shared-state.service';
 import { ConfigEntry, Categoria, Idioma, Tag, Postulacion } from '../../models/interfaces';
 import { I18nService } from '../../services/i18n.service';
+import { PasswordFieldComponent } from '../password-field/password-field.component';
 
 type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags' | 'backup' | 'seguridad';
 
 @Component({
   selector: 'app-configuracion',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, PasswordFieldComponent],
   template: `
     <div>
       <nav class="flex overflow-x-auto border-b mb-5" style="border-color: var(--border);">
@@ -136,15 +137,15 @@ type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags' | 'backup' | 's
           <form (ngSubmit)="changePassword()" class="flex flex-col gap-3">
             <label class="flex flex-col gap-1">
               <span class="text-sm" style="opacity: 0.6;">{{ i18n.t('auth.currentPassword') }}</span>
-              <input type="password" [(ngModel)]="formCurrentPassword" name="currentPassword" autocomplete="current-password" required />
+              <app-password-field [value]="formCurrentPassword" (valueChange)="formCurrentPassword = $event" name="currentPassword" autocomplete="current-password" />
             </label>
             <label class="flex flex-col gap-1">
               <span class="text-sm" style="opacity: 0.6;">{{ i18n.t('auth.newPassword') }}</span>
-              <input type="password" [(ngModel)]="formNewPassword" name="newPassword" autocomplete="new-password" required />
+              <app-password-field [value]="formNewPassword" (valueChange)="formNewPassword = $event" name="newPassword" autocomplete="new-password" />
             </label>
             <label class="flex flex-col gap-1">
               <span class="text-sm" style="opacity: 0.6;">{{ i18n.t('auth.confirmPassword') }}</span>
-              <input type="password" [(ngModel)]="formConfirmPassword" name="confirmNewPassword" autocomplete="new-password" required />
+              <app-password-field [value]="formConfirmPassword" (valueChange)="formConfirmPassword = $event" name="confirmNewPassword" autocomplete="new-password" />
             </label>
             <p class="text-xs" style="opacity: 0.5;">{{ i18n.t('auth.passwordHint') }}</p>
 

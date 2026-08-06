@@ -11,6 +11,11 @@ module.exports = {
         border: 'var(--border)',
         'surface-hover': 'var(--surface-hover)',
       },
+      fontFamily: {
+        sans: ['Inter', 'system-ui', '-apple-system', 'sans-serif'],
+        mono: ['Manrope', 'system-ui', '-apple-system', 'sans-serif'],
+        display: ['Space Grotesk', 'Inter', 'sans-serif'],
+      },
     },
   },
   plugins: [],

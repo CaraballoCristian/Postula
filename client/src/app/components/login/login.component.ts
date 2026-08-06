@@ -3,11 +3,12 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../services/auth.service';
 import { I18nService } from '../../services/i18n.service';
 import { TR } from '../../i18n/es';
+import { PasswordFieldComponent } from '../password-field/password-field.component';
 
 @Component({
   selector: 'app-login',
   standalone: true,
-  imports: [FormsModule],
+  imports: [FormsModule, PasswordFieldComponent],
   template: `
     <div class="min-h-screen flex items-center justify-center p-4" style="background-color: var(--bg);">
       <div class="w-full max-w-sm card animate-fade-in">
@@ -30,24 +31,22 @@ import { TR } from '../../i18n/es';
 
           <label class="flex flex-col gap-1">
             <span class="text-sm" style="opacity: 0.6;">{{ i18n.t('auth.password') }}</span>
-            <input
-              type="password"
-              [(ngModel)]="password"
+            <app-password-field
+              [value]="password"
+              (valueChange)="password = $event"
               name="password"
-              [attr.autocomplete]="mode() === 'register' ? 'new-password' : 'current-password'"
-              required
+              [autocomplete]="mode() === 'register' ? 'new-password' : 'current-password'"
             />
           </label>
 
           @if (mode() === 'register') {
             <label class="flex flex-col gap-1">
               <span class="text-sm" style="opacity: 0.6;">{{ i18n.t('auth.confirmPassword') }}</span>
-              <input
-                type="password"
-                [(ngModel)]="confirmPassword"
+              <app-password-field
+                [value]="confirmPassword"
+                (valueChange)="confirmPassword = $event"
                 name="confirmPassword"
                 autocomplete="new-password"
-                required
               />
             </label>
             <p class="text-xs" style="opacity: 0.5;">{{ i18n.t('auth.passwordHint') }}</p>

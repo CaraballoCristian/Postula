@@ -1,11 +1,11 @@
 import { Injectable, signal, effect } from '@angular/core';
 import { TabName } from '../models/interfaces';
 
-const TABS: TabName[] = ['postular', 'historial', 'templates', 'config'];
+const TABS: TabName[] = ['dashboard', 'postular', 'historial', 'templates', 'config'];
 
 @Injectable({ providedIn: 'root' })
 export class SharedStateService {
-  activeTab = signal<TabName>('postular');
+  activeTab = signal<TabName>('dashboard');
   historialRefresh = signal(0);
   configRefresh = signal(0);
   templatesRefresh = signal(0);

@@ -5,6 +5,8 @@ export const en: Record<TR, string> = {
   'theme.toggle': 'Dark / light mode',
   'theme.accent': 'Accent color',
   'theme.switchLang': 'Switch language (ES/EN)',
+  'layout.toFull': 'Fullscreen (PWA mode)',
+  'layout.toFramed': 'Centered reading view (web mode)',
   'clipboard.copied': 'Copied to clipboard',
   'pwa.update': 'A new version is available',
   'pwa.reload': 'Reload',
@@ -45,10 +47,39 @@ export const en: Record<TR, string> = {
   'auth.hint': 'Sign in to access your applications space.',
 
   // tabs
+  'tab.dashboard': 'Dashboard',
   'tab.postular': 'New Application',
   'tab.historial': 'History',
   'tab.templates': 'Templates',
   'tab.config': 'Settings',
+
+  // dashboard
+  'dash.today': 'Day',
+  'dash.week': 'Week',
+  'dash.month': 'Month',
+  'dash.all': 'All',
+  'dash.desde': 'From',
+  'dash.hasta': 'To',
+  'dash.total': 'Sent',
+  'dash.totalHint': '{{month}} this month · {{all}} total',
+  'dash.weekComp': 'vs. last week',
+  'dash.weekCompHint': '{{cur}} this week · {{prev}} last',
+  'dash.streak': 'Streak',
+  'dash.streakHint': '{{days}} days in a row applying',
+  'dash.tendencia': 'Applications per week',
+  'dash.tendenciaDia': 'Applications per day',
+  'dash.tendenciaMes': 'Applications per month',
+  'dash.vsAyer': 'vs. yesterday',
+  'dash.vsAyerHint': '{{cur}} today · {{prev}} yesterday',
+  'dash.vsMes': 'vs. last month',
+  'dash.vsMesHint': '{{cur}} this month · {{prev}} last month',
+  'dash.byEstado': 'By status',
+  'dash.byCategoria': 'By category',
+  'dash.byIdioma': 'By language',
+  'dash.sinEstado': 'No status',
+  'dash.sinCategoria': 'No category',
+  'dash.sinIdioma': 'No language',
+  'dash.empty': 'No applications in this period',
 
   // dialog
   'dialog.cancel': 'Cancel',
@@ -56,6 +87,8 @@ export const en: Record<TR, string> = {
 
   // common
   'common.loading': 'Loading...',
+  'common.showPw': 'Show password',
+  'common.hidePw': 'Hide password',
   'common.select': 'Select',
   'common.cancel': 'Cancel',
   'common.save': 'Save',
