@@ -14,6 +14,8 @@ export const es = {
   // auth
   'auth.title': 'Iniciar sesión',
   'auth.registerTitle': 'Crear cuenta',
+  'auth.google': 'Continuar con Google',
+  'auth.oauthError': 'No se pudo iniciar sesión con Google. Intentá de nuevo.',
   'auth.email': 'Email',
   'auth.password': 'Contraseña',
   'auth.login': 'Iniciar sesión',

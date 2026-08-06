@@ -2,9 +2,11 @@ import express from 'express';
 import cors from 'cors';
 import path from 'path';
 import fs from 'fs';
+import cookieParser from 'cookie-parser';
 import rateLimit from 'express-rate-limit';
 import { initDB } from './db';
 import authRouter from './routes/auth';
+import oauthRouter from './routes/oauth';
 import categoriasRouter from './routes/categorias';
 import templatesRouter from './routes/templates';
 import postulacionesRouter from './routes/postulaciones';
@@ -17,8 +19,11 @@ import backupRouter from './routes/backup';
 const app = express();
 const PORT = process.env.PORT || 3000;
 
+// Tras Nginx/Caddy (develam), usar X-Forwarded-* para https/redirect_uri correcta.
+app.set('trust proxy', 1);
 app.use(cors());
 app.use(express.json());
+app.use(cookieParser());
 
 // Anti fuerza bruta SOLO sobre login y register. /me y /change-password quedan
 // fuera del límite para no bloquear verificaciones de sesión frecuentes (F5).
@@ -37,6 +42,7 @@ app.use('/api/auth/register', rateLimit({ ...limitOpts, max: registerMax }));
 initDB();
 
 app.use('/api/auth', authRouter);
+app.use('/api/auth', oauthRouter);
 app.use('/api/categorias', categoriasRouter);
 app.use('/api/templates', templatesRouter);
 app.use('/api/postulaciones', postulacionesRouter);
