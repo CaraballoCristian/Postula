@@ -361,15 +361,22 @@ export class DashboardComponent implements OnInit {
   compHint() {
     return this.comp().type === 'day' ? 'dash.vsAyerHint' : this.comp().type === 'month' ? 'dash.vsMesHint' : 'dash.weekCompHint';
   }
-  // Racha: días consecutivos con ≥1 postulación por created_at (contando desde hoy o desde el último día con datos)
+  // Racha: días consecutivos con ≥1 postulación. Sigue viva todo el día si el
+  // último día con actividad es hoy o ayer; si es más viejo, ya se rompió.
   streak = computed(() => {
     if (this.totalAll() === 0) return 0;
     const days = new Set<string>();
+    let last: Date | null = null;
     for (const p of this.all()) {
-      days.add(dayKey(startOfDay(new Date(p.created_at))));
+      const d = startOfDay(new Date(p.created_at));
+      days.add(dayKey(d));
+      if (!last || d > last) last = d;
     }
-    let cursor = startOfDay(new Date());
-    // Si hoy no tiene actividad, empezar desde ayer no rompe necesariamente: racha = última racha hasta el día con datos más reciente
+    if (!last) return 0;
+    const today = startOfDay(new Date());
+    // Si el último día con actividad es anterior a ayer, la racha ya se perdió.
+    if (last.getTime() < today.getTime() - 86400000) return 0;
+    let cursor = last;
     let streakCount = 0;
     while (days.has(dayKey(cursor))) {
       streakCount++;
