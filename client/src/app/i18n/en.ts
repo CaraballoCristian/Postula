@@ -16,6 +16,8 @@ export const en: Record<TR, string> = {
   // auth
   'auth.title': 'Sign in',
   'auth.registerTitle': 'Create account',
+  'auth.google': 'Continue with Google',
+  'auth.oauthError': 'Could not sign in with Google. Please try again.',
   'auth.email': 'Email',
   'auth.password': 'Password',
   'auth.login': 'Sign in',
