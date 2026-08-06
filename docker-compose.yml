@@ -12,6 +12,7 @@ services:
       - AUTH_REGISTER_RATE_MAX=${AUTH_REGISTER_RATE_MAX:-20}
       - GOOGLE_CLIENT_ID=${GOOGLE_CLIENT_ID:-}
       - GOOGLE_CLIENT_SECRET=${GOOGLE_CLIENT_SECRET:-}
+      - CORS_ORIGINS=${CORS_ORIGINS:-http://localhost:4200,http://localhost:3033}
     volumes:
       - server_data:/app/data
     restart: unless-stopped

@@ -1,5 +1,6 @@
 import express from 'express';
 import cors from 'cors';
+import helmet from 'helmet';
 import path from 'path';
 import fs from 'fs';
 import cookieParser from 'cookie-parser';
@@ -21,7 +22,15 @@ const PORT = process.env.PORT || 3000;
 
 // Tras Nginx/Caddy (develam), usar X-Forwarded-* para https/redirect_uri correcta.
 app.set('trust proxy', 1);
-app.use(cors());
+
+const allowedOrigins = (process.env.CORS_ORIGINS || 'http://localhost:4200,http://localhost:3033')
+  .split(',')
+  .map((o) => o.trim());
+app.use(cors({ origin: allowedOrigins, credentials: true }));
+
+// Headers de seguridad HTTP. CSP desactivado: la app usa estilos inline de Angular.
+app.use(helmet({ contentSecurityPolicy: false }));
+
 app.use(express.json());
 app.use(cookieParser());
 
