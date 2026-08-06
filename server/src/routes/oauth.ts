@@ -22,17 +22,14 @@ function googleClientSecret(): string {
   return secret;
 }
 
-/** Protocolo real: respeta X-Forwarded-Proto si el proxy lo manda, y fuerza
- * https para hosts externos aunque el proxy no reenvíe el esquema. */
+/** Protocolo real: los hosts públicos se sirven SIEMPRE por HTTPS; los locales
+ * preservan el protocolo de desarrollo. No se confía en X-Forwarded-Proto porque
+ * el encadenado Cloudflare/Traefik puede reportarlo mal en primera posición. */
 function reqProto(req: Request): string {
   const host = req.get('host') || '';
-  const xfp = req.headers['x-forwarded-proto'];
-  if (xfp) {
-    const p = (Array.isArray(xfp) ? xfp[0] : xfp).split(',')[0].trim();
-    if (p === 'http' || p === 'https') return p;
-  }
   const isLocal = ['localhost', '127.0.0.1', '::1'].some((h) => host.startsWith(h));
-  return isLocal ? req.protocol : 'https';
+  if (isLocal) return req.protocol;
+  return 'https';
 }
 
 /** Deriva la redirect_uri correcta según el request (local y prod sin hardcodear). */
