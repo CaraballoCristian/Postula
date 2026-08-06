@@ -22,9 +22,22 @@ function googleClientSecret(): string {
   return secret;
 }
 
+/** Protocolo real: respeta X-Forwarded-Proto si el proxy lo manda, y fuerza
+ * https para hosts externos aunque el proxy no reenvíe el esquema. */
+function reqProto(req: Request): string {
+  const host = req.get('host') || '';
+  const xfp = req.headers['x-forwarded-proto'];
+  if (xfp) {
+    const p = (Array.isArray(xfp) ? xfp[0] : xfp).split(',')[0].trim();
+    if (p === 'http' || p === 'https') return p;
+  }
+  const isLocal = ['localhost', '127.0.0.1', '::1'].some((h) => host.startsWith(h));
+  return isLocal ? req.protocol : 'https';
+}
+
 /** Deriva la redirect_uri correcta según el request (local y prod sin hardcodear). */
 function redirectUri(req: Request): string {
-  return `${req.protocol}://${req.get('host')}/api/auth/google/callback`;
+  return `${reqProto(req)}://${req.get('host')}/api/auth/google/callback`;
 }
 
 function publicUser(row: any) {
@@ -42,7 +55,7 @@ const OAUTH_STATE_COOKIE = 'postulatool_oauth_state';
 
 router.get('/google', (req: Request, res: Response) => {
   const state = crypto.randomBytes(24).toString('hex');
-  const secure = req.protocol === 'https';
+  const secure = reqProto(req) === 'https';
   res.cookie(OAUTH_STATE_COOKIE, state, {
     httpOnly: true,
     secure,
@@ -72,7 +85,7 @@ router.get('/google/callback', async (req: Request, res: Response) => {
   }
 
   const stored = (req.cookies && req.cookies[OAUTH_STATE_COOKIE]) as string | undefined;
-  res.clearCookie(OAUTH_STATE_COOKIE, { httpOnly: true, secure: req.protocol === 'https', sameSite: 'lax', path: '/' });
+  res.clearCookie(OAUTH_STATE_COOKIE, { httpOnly: true, secure: reqProto(req) === 'https', sameSite: 'lax', path: '/' });
 
   if (!code || !state || !stored || state !== stored) {
     return res.redirect(frontendRedirect({ oauth_error: '1' }));
