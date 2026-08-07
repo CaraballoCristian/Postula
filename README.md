@@ -15,7 +15,7 @@ Built as a **monolithic app** (single container serves the API + the built clien
 
 ## 🖼️ Preview
 
-![Postulá Preview](./preview.png)
+![Postulá Preview](./postula-mockup.png)
 
 ---
 
