@@ -51,6 +51,7 @@ cd PostulaTool
 # 1. Configure secrets (copy the example)
 cp .env.example .env
 # then fill GOOGLE_CLIENT_ID / GOOGLE_CLIENT_SECRET / JWT_SECRET
+# optional: CORS_ORIGINS (comma-separated allowed origins, e.g. https://tu-dominio.com)
 
 # 2. Build and start
 docker compose up -d --build
@@ -138,8 +139,8 @@ npm start            # http://localhost:4200 (proxies /api to :3000)
 | PUT/DELETE | `/api/empresas/:id` | Update / delete company |
 | GET/POST | `/api/config` | Profile/config CRUD |
 | PUT/DELETE | `/api/config/:id` | Update / delete config |
-| GET | `/api/backup/export` | Export full database as JSON |
-| POST | `/api/backup/import` | Restore from JSON backup |
+| GET | `/api/backup/export` | Export data as JSON (full snapshot) |
+| POST | `/api/backup/import` | Restore history from JSON (postulaciones + categorias/templates/idiomas) |
 
 ---
 
@@ -154,7 +155,7 @@ npm start            # http://localhost:4200 (proxies /api to :3000)
 - 🗃️ **View modes** — table and grouped-by-company
 - 🔄 **Bulk status updates** — change the status of multiple applications at once
 - 🗑️ **Trash (soft delete)** — restore or permanently purge
-- 💾 **Backup / Restore** — export the full database as JSON or import it
+- 💾 **Backup / Restore** — export the data as JSON; restore brings the history (postulaciones) plus its categorias/templates/idiomas. **`config` (personal data) and `tags` are never imported**, preventing duplicates; postulacion statuses are kept when the tag already exists, otherwise remapped to the account's default tag.
 - 📎 **One-click copy** — copy individual or all generated messages at once
 - 📱 **Progressive Web App (PWA)** — installable, offline asset caching, auto-update prompt
 - 🌐 **Web / PWA view toggle** — choose a centered reading frame or fullscreen (Notion-style)
@@ -232,6 +233,8 @@ PostulaTool/
 ---
 
 ## ⚠️ Note
+
+- **Security**: the server mounts [Helmet](https://helmetjs.github.io/) (security response headers; CSP disabled to allow the SPA's inline styles) and a **restrictive CORS** whitelist driven by the `CORS_ORIGINS` env var (defaults to `http://localhost:4200,http://localhost:3033` for local dev). In production set `CORS_ORIGINS=https://tu-dominio.com` (comma-separated for multiple origins). The app uses `trust proxy: 1`, so it must sit behind **one** trustable proxy (e.g. a reverse proxy that terminates HTTPS); adjust if you add Cloudflare/Traefik hops.
 
 Frontend build budget warning: the initial bundle exceeds **500 kB** (currently ~576 kB, warning is non-blocking). If you want to silence it, raise or remove the `maximumWarning` budget in `client/angular.json`.
 

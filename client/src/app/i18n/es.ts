@@ -256,11 +256,11 @@ export const es = {
 
   // backup
 'backup.section': 'Backup',
-  'backup.intro': 'Descargá o restaurá una copia de tu historial. Al restaurar solo se recuperan las postulaciones; no se modifican categorías, plantillas ni configuración.',
+  'backup.intro': 'Descargá o restaurá el historial de postulaciones junto con sus categorías, plantillas e idiomas. No se importan datos personales ni tags.',
   'backup.export': 'Exportar datos',
   'backup.import': 'Restaurar backup',
   'backup.exportDone': 'Backup exportado',
-  'backup.importConfirm': '¿Restaurar el historial (postulaciones)? No se modificarán categorías, plantillas ni configuración.',
+  'backup.importConfirm': '¿Restaurar el historial (postulaciones)? Se incluyen sus categorías, plantillas e idiomas. No se importan datos personales ni tags.',
   'backup.importDone': 'Historial restaurado',
   'backup.importError': 'Error al importar el backup',
 
