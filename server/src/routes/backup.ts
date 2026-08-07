@@ -30,11 +30,11 @@ router.get('/export', (req: AuthRequest, res: Response) => {
   res.json({ version: db.pragma('user_version', { simple: true }), exported_at: new Date().toISOString(), ...data });
 });
 
-// Import/restaurar: trae SÓLO el historial (postulaciones). No modifica categorias,
-// templates, config, idiomas ni tags (evita conflictos). Las categorías/plantillas del
-// backup se usan únicamente como referencia (solo lectura) para remapear por nombre la
-// categoría/plantilla de cada postulación hacia las YA existentes en la cuenta; si no
-// hay match, la referencia queda vacía.
+// Import/restaurar: trae el historial (postulaciones) con su contexto de categorías,
+// plantillas e idiomas. NO importa config (datos personales) ni tags (evita duplicar
+// nombres renombrados). Las categorías/plantillas/idiomas se reaplican "crear si falta",
+// nunca actualizan lo existente. El estado de cada postulación se conserva solo si ya
+// existe como tag en la cuenta; si no, se reemplaza por el tag por defecto de la cuenta.
 router.post('/import', (req: AuthRequest, res: Response) => {
   const data = req.body?.data;
   if (!data || typeof data !== 'object') {
@@ -45,36 +45,59 @@ router.post('/import', (req: AuthRequest, res: Response) => {
 
   const num = (v: unknown, fallback: number) => { const n = Number(v); return Number.isNaN(n) ? fallback : n; };
 
-  // ── Referencia (solo lectura) para remapear por nombre ──
-  // catMap: id de categoría del origen -> id (o null) de categoría EXISTENTE con el mismo nombre.
-  // tplMap: id de plantilla del origen -> id de plantilla EXISTENTE con igual contenido.
-  const buildCatMap = () => {
-    const map = new Map<number, number | null>();
+  // ── Tags existentes (no se importan; solo se usan para validar/coercionar estado) ──
+  const existingTags = db.prepare('SELECT nombre FROM tags WHERE user_id = ? ORDER BY id').all(userId) as any[];
+  const tagNames = new Set(existingTags.map((t: any) => String(t.nombre)));
+  const fallbackEstado = existingTags.length ? String(existingTags[0].nombre) : 'solicitado';
+
+  // ── Categorías (crear si falta por (user, nombre)) ──
+  const catMap = new Map<number, number | null>();
+  {
     const getCat = db.prepare('SELECT id FROM categorias WHERE user_id = ? AND nombre = ?');
+    const insCat = db.prepare('INSERT INTO categorias (user_id, nombre, created_at) VALUES (?, ?, ?)');
     for (const c of (data.categorias ?? []) as any[]) {
       const name = String(c.nombre || '').trim();
       if (!name) continue;
-      const found = getCat.get(userId, name) as any;
-      map.set(num(c.id, 0), found ? found.id : null);
+      let found = getCat.get(userId, name) as any;
+      if (!found) found = { id: insCat.run(userId, name, c.created_at || new Date().toISOString()).lastInsertRowid };
+      catMap.set(num(c.id, 0), found.id);
     }
-    return map;
-  };
-  const catMap = buildCatMap();
+  }
 
-  // Template matcheo por contenido del backup hacia la misma categoría ya remapeada.
-  const buildTplMap = () => {
-    const map = new Map<number, number | null>();
+  // ── Idiomas ( crear si no existe por (user, nombre)) ──
+  const idiMap = new Map<number, number | null>();
+  {
+    const getIdi = db.prepare('SELECT id FROM idiomas WHERE user_id = ? AND nombre = ?');
+    const insIdi = db.prepare('INSERT INTO idiomas (user_id, nombre, created_at) VALUES (?, ?, ?)');
+    for (const i of (data.idiomas ?? []) as any[]) {
+      const name = String(i.nombre || '').trim();
+      if (!name) continue;
+      let found = getIdi.get(userId, name) as any;
+      if (!found) found = { id: insIdi.run(userId, name, i.created_at || new Date().toISOString()).lastInsertRowid };
+      idiMap.set(num(i.id, 0), found.id);
+    }
+  }
+
+  // ── Plantillas ( crear si no existe por contenido + categoría ya re-mapeada) ──
+  const tplMap = new Map<number, number | null>();
+  {
     const getTpl = db.prepare(`SELECT id FROM templates WHERE user_id = ? AND categoria_id = ? AND idioma = ? AND tipo = ? AND nombre = ? AND contenido = ? AND orden = ?`);
+    const insTpl = db.prepare(`INSERT INTO templates (user_id, categoria_id, idioma, tipo, nombre, contenido, orden, created_at, updated_at)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`);
     for (const t of (data.templates ?? []) as any[]) {
       const catId = catMap.get(num(t.categoria_id, 0)) ?? null;
-      const found = getTpl.get(userId, catId, t.idioma, t.tipo, t.nombre, t.contenido ?? '', t.orden ?? 0) as any;
-      map.set(num(t.id, 0), found ? found.id : null);
+      let found = getTpl.get(userId, catId, t.idioma, t.tipo, t.nombre, t.contenido ?? '', t.orden ?? 0) as any;
+      if (!found) {
+        found = { id: insTpl.run(
+          userId, catId, t.idioma, t.tipo, t.nombre, t.contenido ?? '', t.orden ?? 0,
+          t.created_at || new Date().toISOString(), t.updated_at || t.created_at || new Date().toISOString()
+        ).lastInsertRowid };
+      }
+      tplMap.set(num(t.id, 0), found.id);
     }
-    return map;
-  };
-  const tplMap = buildTplMap();
+  }
 
-  // ── Postulaciones ──
+  // ── Postulaciones (id nuevo; dedup; estado validado contra tags existentes) ──
   const merge = db.transaction(() => {
     let skipped = 0;
     const mapTpl = (ids: any): number[] => {
@@ -97,7 +120,8 @@ router.post('/import', (req: AuthRequest, res: Response) => {
       const catId = catMap.get(num(p.categoria_id, 0)) ?? null;
       const tplIds = mapTpl(p.template_ids);
       const fecha = p.fecha || new Date().toISOString();
-      const estado = String(p.estado || 'solicitado');
+      let estado = String(p.estado || 'solicitado');
+      if (!tagNames.has(estado)) estado = fallbackEstado;
       const dup = dupPost.get(userId, p.empresa, p.oferta_laboral || '', catId, p.idioma ?? null, fecha) as any;
       if (dup) { skipped++; continue; }
       insPost.run(

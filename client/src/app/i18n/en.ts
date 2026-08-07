@@ -258,11 +258,11 @@ export const en: Record<TR, string> = {
 
   // backup
   'backup.section': 'Backup',
-  'backup.intro': 'Download or restore a copy of your history. Restoring only recovers postulaciones; categories, templates and config are not modified.',
+  'backup.intro': 'Download or restore the application history along with its categories, templates and languages. Personal data and tags are not imported.',
   'backup.export': 'Export data',
   'backup.import': 'Restore backup',
   'backup.exportDone': 'Backup exported',
-  'backup.importConfirm': 'Restore the history (postulaciones)? Categories, templates and config will not be modified.',
+  'backup.importConfirm': 'Restore the history (postulaciones)? Its categories, templates and languages are included. Personal data and tags are not imported.',
   'backup.importDone': 'History restored',
   'backup.importError': 'Error importing backup',
 
