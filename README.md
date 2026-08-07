@@ -44,9 +44,9 @@ The data is stored in a volume at `/app/data/postulatool.sqlite` (production) or
 
 ```bash
 # Clone the repository
-git clone https://github.com/CaraballoCristian/PostulaTool.git
+git clone https://github.com/CaraballoCristian/Postula.git
 
-cd PostulaTool
+cd Postula
 
 # 1. Configure secrets (copy the example)
 cp .env.example .env
