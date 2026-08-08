@@ -58,7 +58,7 @@ import { PasswordFieldComponent } from '../password-field/password-field.compone
 
           <button type="submit" class="btn btn-primary w-full" [disabled]="loading()">
             @if (loading()) {
-              <span class="loader" style="border-top-color: #fff;"></span>
+              <span class="loader" style="border-top-color: var(--accent-contrast, #fff);"></span>
             } @else {
               {{ i18n.t(mode() === 'login' ? 'auth.login' : 'auth.create') }}
             }

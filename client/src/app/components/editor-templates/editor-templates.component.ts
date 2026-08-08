@@ -66,7 +66,7 @@ import { I18nService } from "../../services/i18n.service";
               <span class="font-medium text-sm truncate">{{ t.nombre }}</span>
               <span
                 class="badge text-[0.65rem]"
-                style="background: var(--accent); color: #fff;"
+                style="background: var(--accent); color: var(--accent-contrast, #fff);"
                 >{{ TIPO_ICONS[t.tipo] }} {{ tipoLabel(t.tipo) }}</span
               >
               <span

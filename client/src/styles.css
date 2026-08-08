@@ -208,7 +208,7 @@ button {
 
 .btn-primary {
   background-color: var(--accent);
-  color: #fff;
+  color: var(--accent-contrast, #fff);
 }
 
 .btn-outline {
@@ -262,7 +262,7 @@ button {
 
 .toggle-pill.active {
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-contrast, #fff);
   border-color: var(--accent);
 }
 
@@ -330,7 +330,7 @@ button {
 
 .view-pill.active {
   background: var(--accent);
-  color: #fff;
+  color: var(--accent-contrast, #fff);
   opacity: 1;
 }
 

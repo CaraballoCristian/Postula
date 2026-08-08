@@ -18,7 +18,7 @@ import { I18nService } from '../../services/i18n.service';
       </div>
     }
     @if (dialog.state().open && dialog.state().type === 'toast') {
-      <div class="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg text-sm text-white z-[100] animate-slide-up" style="background: var(--accent);">
+      <div class="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg text-sm z-[100] animate-slide-up" style="background: var(--accent); color: var(--accent-contrast, #fff);">
         {{ dialog.state().message }}
       </div>
     }
