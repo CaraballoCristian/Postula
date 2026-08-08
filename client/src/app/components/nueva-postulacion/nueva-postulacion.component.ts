@@ -5,7 +5,7 @@ import { ApiService } from '../../services/api.service';
 import { ClipboardService } from '../../services/clipboard.service';
 import { DialogService } from '../../services/dialog.service';
 import { SharedStateService } from '../../services/shared-state.service';
-import { Categoria, Template, TIPO_ICONS, TIPOS_MENSAJE, ESTADOS, Idioma, Tag, Empresa } from '../../models/interfaces';
+import { Categoria, Template, TIPO_ICONS, ESTADOS, Idioma, Tag, Empresa } from '../../models/interfaces';
 import { I18nService } from '../../services/i18n.service';
 
 interface SelectedTemplate {
@@ -184,11 +184,13 @@ export class NuevaPostulacionComponent implements OnInit {
   @ViewChild('resultadosSection') resultadosSection!: ElementRef;
   categorias: Categoria[] = [];
   idiomas: Idioma[] = [];
-  tipos = TIPOS_MENSAJE;
+  // Orden visual de los tipos de mensaje en los toggle-pill.
+  tipos: Template['tipo'][] = ['mensaje_recruiter', 'email', 'mensaje_empresa'];
   TIPO_ICONS = TIPO_ICONS;
   categoriaId: number | null = null;
   idioma: string | null = null;
-  selected = signal<SelectedTemplate[]>([]);
+  // "Empleado" (mensaje_recruiter) marcado por defecto; loadTemplates completa su plantilla.
+  selected = signal<SelectedTemplate[]>([{ tipo: 'mensaje_recruiter', template: null }]);
   fieldValues = signal<Record<string, string>>({});
   dynamicFields = signal<{ key: string; fromConfig: boolean }[]>([]);
   fieldErrors = signal<Set<string>>(new Set());

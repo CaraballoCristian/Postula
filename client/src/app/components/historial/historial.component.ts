@@ -258,7 +258,7 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
                         }
                       </div>
                       @if (p.categoria_id) {
-                        <span class="badge kanban-badge shrink-0" style="background: var(--accent); color: #fff;">{{ catNombre(p.categoria_id) }}</span>
+                        <span class="badge kanban-badge shrink-0" style="background: var(--accent); color: var(--accent-contrast, #fff);">{{ catNombre(p.categoria_id) }}</span>
                       }
                     </div>
                     <p class="text-xs truncate mt-1" [title]="p.oferta_laboral">{{ p.oferta_laboral || '—' }}</p>

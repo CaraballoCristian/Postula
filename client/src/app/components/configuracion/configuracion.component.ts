@@ -156,7 +156,7 @@ type ConfigSection = 'datos' | 'categorias' | 'idiomas' | 'tags' | 'backup' | 's
 
             <button type="submit" class="btn btn-primary w-full" [disabled]="pwLoading()">
               @if (pwLoading()) {
-                <span class="loader" style="border-top-color: #fff;"></span>
+                <span class="loader" style="border-top-color: var(--accent-contrast, #fff);"></span>
               } @else {
                 {{ i18n.t('auth.changePassword') }}
               }

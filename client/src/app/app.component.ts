@@ -147,17 +147,17 @@ import { DialogComponent } from './components/dialog/dialog.component';
       </div>
 
       @if (clipboard.copied()) {
-        <div class="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg text-sm text-white z-50 animate-slide-up" style="background: var(--accent);">
+        <div class="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg text-sm z-50 animate-slide-up" style="background: var(--accent); color: var(--accent-contrast, #fff);">
           {{ i18n.t('clipboard.copied') }}
         </div>
       }
 
       @if (updateAvailable()) {
-        <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2 rounded-lg text-sm text-white animate-slide-up" style="background: var(--accent); box-shadow: 0 4px 16px rgba(0,0,0,0.2);">
+        <div class="fixed bottom-6 left-1/2 -translate-x-1/2 z-50 flex items-center gap-3 px-4 py-2 rounded-lg text-sm animate-slide-up" style="background: var(--accent); box-shadow: 0 4px 16px rgba(0,0,0,0.2); color: var(--accent-contrast, #fff);">
           <span>{{ i18n.t('pwa.update') }}</span>
           <button
-            class="px-2 py-0.5 rounded text-xs font-semibold text-white border-0 cursor-pointer"
-            style="background: rgba(255,255,255,0.25);"
+            class="px-2 py-0.5 rounded text-xs font-semibold border-0 cursor-pointer"
+            style="background: rgba(255,255,255,0.25); color: var(--accent-contrast, #fff);"
             (click)="reloadForUpdate()"
           >{{ i18n.t('pwa.reload') }}</button>
         </div>

@@ -53,7 +53,7 @@ interface TableCol {
                 }
                 @if (show('categoria_id')) {
                   <td class="px-3 py-2.5" style="border-left: 1px solid var(--border);">
-                    @if (p.categoria_id) { <span class="badge text-[0.65rem]" style="background: var(--accent); color: #fff;">{{ catNombre(p.categoria_id) }}</span> }
+                    @if (p.categoria_id) { <span class="badge text-[0.65rem]" style="background: var(--accent); color: var(--accent-contrast, #fff);">{{ catNombre(p.categoria_id) }}</span> }
                   </td>
                 }
                 @if (show('idioma')) {
