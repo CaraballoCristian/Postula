@@ -84,13 +84,6 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
           {{ i18n.t('hist.seleccionMultiple') }}
         </label>
 
-        @if (!trashMode()) {
-          <div class="flex items-center gap-0.5 p-0.5 border rounded-md" style="border-color: var(--border); background: var(--surface);">
-            <button class="view-pill" [class.active]="viewMode() === 'tabla'" (click)="setView('tabla')">☰ {{ i18n.t('hist.tabla') }}</button>
-            <button class="view-pill" [class.active]="viewMode() === 'empresa'" (click)="setView('empresa')">▣ {{ i18n.t('hist.porEmpresa') }}</button>
-          </div>
-        }
-
         @if (selectionMode()) {
           <div class="hidden sm:flex gap-2 sm:gap-3 items-center">
             <button class="toggle-pill" (click)="selectAll()">{{ i18n.t('hist.seleccionarTodo') }}</button>
@@ -103,10 +96,6 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
             }
           </div>
         }
-
-        <span class="text-xs ml-auto" style="opacity: 0.4;">{{ i18n.t('hist.resultado', { count: filteredCount() }) }}</span>
-
-        <button class="toggle-pill" [class.active]="trashMode()" [title]="i18n.t('pap.ver')" (click)="toggleTrash()">🗑️</button>
 
         @if (selectionMode()) {
           <div class="flex sm:hidden flex-col gap-2 w-full">
@@ -122,7 +111,19 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
             }
           </div>
         }
-        </div>
+      </div>
+
+      <!-- FILA DE VISTA: toggle tabla/por empresa + contador + papelera -->
+      <div class="flex items-center gap-2 sm:gap-3 flex-wrap mt-1">
+        @if (!trashMode()) {
+          <div class="flex items-center gap-0.5 p-0.5 border rounded-md" style="border-color: var(--border); background: var(--surface);">
+            <button class="view-pill" [class.active]="viewMode() === 'tabla'" (click)="setView('tabla')">☰ {{ i18n.t('hist.tabla') }}</button>
+            <button class="view-pill" [class.active]="viewMode() === 'empresa'" (click)="setView('empresa')">▣ {{ i18n.t('hist.porEmpresa') }}</button>
+          </div>
+        }
+        <span class="text-xs ml-auto" style="opacity: 0.4;">{{ i18n.t('hist.resultado', { count: filteredCount() }) }}</span>
+        <button class="toggle-pill" [class.active]="trashMode()" [title]="i18n.t('pap.ver')" (click)="toggleTrash()">🗑️</button>
+      </div>
         
       </div>
       </div>
