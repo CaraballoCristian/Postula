@@ -47,6 +47,8 @@ estado = DEFAULT_ESTADO;
   contactoEmpleado = '';
   estados: { value: string; label: string }[] = ESTADOS.map(e => ({ value: e.value, label: e.label }));
   private configKeys: Record<string, string> = {};
+  private prevDefaultCat: number | null = null;
+  private prevDefaultLang = '';
 
   // ── Empresas ──
   empresas = signal<Empresa[]>([]);
@@ -178,6 +180,8 @@ crearEmpresa(data: { nombre: string; link: string }) {
       }
       if (this.categoriaId === null && defCat) this.categoriaId = defCat;
       if (!this.idioma && defLang) this.idioma = defLang;
+      this.prevDefaultCat = defCat;
+      this.prevDefaultLang = defLang ?? '';
       if (initial && !this.templatesInitialized && this.categoriaId && this.idioma) { this.templatesInitialized = true; this.loadTemplates(); }
       onDone?.();
     });
@@ -186,8 +190,28 @@ crearEmpresa(data: { nombre: string; link: string }) {
   reloadConfigKeys() {
     this.api.getConfig().subscribe(d => {
       this.configKeys = {};
-      for (const c of d) this.configKeys[c.clave] = c.valor;
+      let defCat: number | null = null;
+      let defLang: string | null = null;
+      for (const c of d) {
+        this.configKeys[c.clave] = c.valor;
+        if (c.clave === 'default_categoria_id') defCat = Number(c.valor);
+        if (c.clave === 'default_idioma') defLang = c.valor;
+      }
+      // Re-aplica el default si el usuario no eligió manualmente otra categoría/idioma.
+      let catChanged = false;
+      let langChanged = false;
+      if (defCat && (this.categoriaId === null || this.categoriaId === this.prevDefaultCat)) {
+        catChanged = this.categoriaId !== defCat;
+        this.categoriaId = defCat;
+      }
+      if (defLang && (!this.idioma || this.idioma === this.prevDefaultLang)) {
+        langChanged = this.idioma !== defLang;
+        this.idioma = defLang;
+      }
+      this.prevDefaultCat = defCat;
+      this.prevDefaultLang = defLang ?? '';
       this.buildDynamicFields();
+      if ((catChanged || langChanged) && this.categoriaId && this.idioma) this.loadTemplates();
     });
   }
 

@@ -6,6 +6,7 @@ import { DialogService } from '../../services/dialog.service';
 import { SharedStateService } from '../../services/shared-state.service';
 import { ConfigEntry, Categoria, Idioma, Tag, Postulacion } from '../../models/interfaces';
 import { I18nService } from '../../services/i18n.service';
+import { DEFAULT_TAG_LABELS, DEFAULT_CAT_LABELS } from '../../i18n/labels';
 import { firstValueFrom } from 'rxjs';
 import { PasswordFieldComponent } from '../password-field/password-field.component';
 import { ImportConflictComponent, ImportConflictGroup, ImportChoice } from '../import-conflict/import-conflict.component';
@@ -55,7 +56,7 @@ export class ConfiguracionComponent {
   modalCat = signal(false); editCatId = signal<number | null>(null); formCatNombre = '';
   modalIdioma = signal(false); editIdiomaId = signal<number | null>(null); formIdiomaNombre = '';
   modalTag = signal(false); editTagId = signal<number | null>(null); formTagNombre = ''; formTagColor = '#3b82f6';
-  deleteTagModal = signal(false); pendingDeleteId: number | null = null; pendingDeleteCount = 0; reassignTagId: number | null = null;
+  reassignModal = signal<'tag' | 'categoria' | null>(null); pendingDeleteKind: 'tag' | 'categoria' | null = null; pendingDeleteId: number | null = null; pendingDeleteCount = 0; reassignDestId: number | null = null;
   importReview = signal<{ data: any; groups: ImportConflictGroup[] } | null>(null);
   importBusy = signal(false);
 
@@ -85,7 +86,7 @@ export class ConfiguracionComponent {
   @HostListener('document:keydown.escape')
   onEsc() {
     if (this.importReview()) { this.cancelImport(); return; }
-    if (this.deleteTagModal()) { this.cancelDeleteTag(); return; }
+    if (this.reassignModal()) { this.cancelReassign(); return; }
     if (this.modalDatos() || this.modalCat() || this.modalIdioma() || this.modalTag()) this.closeModals();
   }
 
@@ -109,7 +110,7 @@ export class ConfiguracionComponent {
     this.api.getTemplates().subscribe(d => this.allTemplates = d);
   }
 
-  closeModals() { this.modalDatos.set(false); this.editDatoId.set(null); this.modalCat.set(false); this.editCatId.set(null); this.modalIdioma.set(false); this.editIdiomaId.set(null); this.modalTag.set(false); this.editTagId.set(null); this.deleteTagModal.set(false); this.pendingDeleteId = null; this.reassignTagId = null; this.claveError.set(''); this.catNombreError.set(''); this.idiomaNombreError.set(''); this.tagNombreError.set(''); }
+  closeModals() { this.modalDatos.set(false); this.editDatoId.set(null); this.modalCat.set(false); this.editCatId.set(null); this.modalIdioma.set(false); this.editIdiomaId.set(null); this.modalTag.set(false); this.editTagId.set(null); this.reassignModal.set(null); this.pendingDeleteId = null; this.reassignDestId = null; this.claveError.set(''); this.catNombreError.set(''); this.idiomaNombreError.set(''); this.tagNombreError.set(''); }
 
   refCount(clave: string): number {
     let c = 0; const r = new RegExp(`\\{${clave}\\}`, 'g');
@@ -232,24 +233,54 @@ export class ConfiguracionComponent {
     });
   }
 
-  saveCategoria() {
+  async saveCategoria() {
     const n = this.formCatNombre.trim(); if (!n) { this.catNombreError.set(this.i18n.t('cfg.nombreRequerido')); return; }
     this.catNombreError.set('');
     const id = this.editCatId();
-    if (id) {
-      const old = this.categorias().find(c => c.id === id);
-      if (old && n !== old.nombre && this.i18n.categoriaLabel(n) === this.i18n.categoriaLabel(old.nombre)) {
-        // Mismo label traducido (p. ej. "Management" → "Gestión" en ES): no renombra, conserva el original.
-        this.api.updateCategoria(id, old.nombre).subscribe({ next: () => { this.closeModals(); this.api.getCategorias().subscribe(d => this.categorias.set(d)); this.shared.categoriasRefresh.update(v => v + 1); }, error: () => this.dialog.toast(this.i18n.t('common.error.save'), 'error') });
-        return;
-      }
+    if (this.categorias().some(c => c.id !== id && this.catCollides(c, n))) { this.catNombreError.set(this.i18n.t('cfg.categoriaExiste')); return; }
+    const old = id ? this.categorias().find(c => c.id === id) : undefined;
+    if (id && old && n !== old.nombre && this.i18n.categoriaLabel(n) === this.i18n.categoriaLabel(old.nombre)) {
+      // Mismo label traducido (p. ej. "Management" → "Gestión" en ES): no renombra, conserva el original.
+      this.api.updateCategoria(id, old.nombre).subscribe({ next: () => { this.closeModals(); this.api.getCategorias().subscribe(d => this.categorias.set(d)); this.shared.categoriasRefresh.update(v => v + 1); }, error: (err: any) => this.errorToast(err, 'cfg.categoriaExiste', 'common.error.save') });
+      return;
     }
-    (id ? this.api.updateCategoria(id, n) : this.api.createCategoria(n)).subscribe({ next: () => { this.closeModals(); this.api.getCategorias().subscribe(d => this.categorias.set(d)); this.shared.categoriasRefresh.update(v => v + 1); }, error: () => this.dialog.toast(this.i18n.t('common.error.save'), 'error') });
+    if (id && old && n !== old.nombre) {
+      // Renombre real: confirmar si hay postulaciones que usan la categoría.
+      const oldL = this.i18n.categoriaLabel(old.nombre);
+      const newL = this.i18n.categoriaLabel(n);
+      const affected = await new Promise<number>(resolve => {
+        this.api.getPostulaciones({ categoria_id: id }).subscribe(list => resolve(list.length));
+      });
+      const ok = await this.dialog.confirm(affected > 0
+        ? this.i18n.t('cfg.renameCat', { old: oldL, new: newL, count: affected })
+        : this.i18n.t('cfg.renameCatSimple', { old: oldL, new: newL }));
+      if (!ok) return;
+    }
+    (id ? this.api.updateCategoria(id, n) : this.api.createCategoria(n)).subscribe({ next: () => { this.closeModals(); this.api.getCategorias().subscribe(d => this.categorias.set(d)); this.shared.categoriasRefresh.update(v => v + 1); }, error: (err: any) => this.errorToast(err, 'cfg.categoriaExiste', 'common.error.save') });
   }
   async removeCategoria(id: number) {
-    const ok = await this.dialog.confirm(this.i18n.t('cfg.delCategoria'));
-    if (!ok) return;
-    this.api.deleteCategoria(id).subscribe(() => { this.api.getCategorias().subscribe(d => this.categorias.set(d)); this.shared.categoriasRefresh.update(v => v + 1); this.shared.templatesRefresh.update(v => v + 1); });
+    const cat = this.categorias().find(c => c.id === id);
+    if (!cat) return;
+    const affected = await new Promise<number>(resolve => {
+      this.api.getPostulaciones({ categoria_id: id }).subscribe(list => resolve(list.length));
+    });
+    this.pendingDeleteKind = 'categoria';
+    this.pendingDeleteId = id;
+    this.pendingDeleteCount = affected;
+    if (affected === 0) {
+      const ok = await this.dialog.confirm(this.i18n.t('cfg.delCategoria'));
+      if (!ok) return;
+      this.deleteCurrent();
+      return;
+    }
+    const others = this.categorias().filter(c => c.id !== id);
+    if (others.length === 0) {
+      this.dialog.toast(this.i18n.t('cfg.sinOtrasCategorias'), 'error');
+      this.cancelReassign();
+      return;
+    }
+    this.reassignDestId = others[0].id;
+    this.reassignModal.set('categoria');
   }
 
   // ── IDIOMAS ──
@@ -258,7 +289,7 @@ export class ConfiguracionComponent {
     const n = this.formIdiomaNombre.trim(); if (!n) { this.idiomaNombreError.set(this.i18n.t('cfg.nombreRequerido')); return; }
     this.idiomaNombreError.set('');
     const id = this.editIdiomaId();
-    (id ? this.api.updateIdioma(id, n) : this.api.createIdioma(n)).subscribe({ next: () => { this.closeModals(); this.api.getIdiomas().subscribe(d => { this.idiomas.set(d); this.updateAvailableIdiomas(); }); this.shared.idiomasRefresh.update(v => v + 1); }, error: () => this.dialog.toast(this.i18n.t('common.error.save'), 'error') });
+    (id ? this.api.updateIdioma(id, n) : this.api.createIdioma(n)).subscribe({ next: () => { this.closeModals(); this.api.getIdiomas().subscribe(d => { this.idiomas.set(d); this.updateAvailableIdiomas(); }); this.shared.idiomasRefresh.update(v => v + 1); }, error: (err: any) => this.errorToast(err, 'cfg.idiomaExiste', 'common.error.save') });
   }
   async removeIdioma(id: number) {
     const ok = await this.dialog.confirm(this.i18n.t('cfg.delIdioma'));
@@ -368,6 +399,33 @@ const groups = (res?.groups ?? []) as ImportConflictGroup[];
 
   // ── TAGS ──
   slugify(name: string) { return slugifyUtil(name); }
+  private errorToast(err: any, dupKey: any, fallbackKey: any) {
+    if (err?.status === 409) this.dialog.toast(this.i18n.t(dupKey), 'error');
+    else this.dialog.toast(this.i18n.t(fallbackKey), 'error');
+  }
+  private catLabels(nombre: string): string[] {
+    const d = DEFAULT_CAT_LABELS[nombre];
+    return d ? [d.es, d.en] : [this.i18n.categoriaLabel(nombre)];
+  }
+  private catCollides(existing: Categoria, candidate: string): boolean {
+    const c = candidate.trim();
+    if (!c) return false;
+    const cLower = c.toLowerCase();
+    if (existing.nombre.trim().toLowerCase() === cLower) return true;
+    return this.catLabels(existing.nombre).some(l => l.toLowerCase() === cLower);
+  }
+  private tagLabels(nombre: string): string[] {
+    return DEFAULT_TAG_LABELS[nombre]
+      ? [DEFAULT_TAG_LABELS[nombre].es, DEFAULT_TAG_LABELS[nombre].en]
+      : [this.i18n.tagLabel(nombre)];
+  }
+  private tagCollides(existing: Tag, candidateLabel: string): boolean {
+    const c = candidateLabel.trim();
+    if (!c) return false;
+    const cLower = c.toLowerCase();
+    if (this.slugify(existing.nombre) === this.slugify(c)) return true;
+    return this.tagLabels(existing.nombre).some(l => l.toLowerCase() === cLower);
+  }
   openTagModal(t?: Tag) {
     this.editTagId.set(t ? t.id : null);
     this.formTagNombre = t ? this.i18n.tagLabel(t.nombre) : '';
@@ -379,6 +437,7 @@ const groups = (res?.groups ?? []) as ImportConflictGroup[];
     const n = this.slugify(this.formTagNombre); if (!n) { this.tagNombreError.set(this.i18n.t('cfg.nombreRequerido')); return; }
     this.tagNombreError.set('');
     const id = this.editTagId();
+    if (this.tags().some(t => t.id !== id && this.tagCollides(t, this.formTagNombre))) { this.tagNombreError.set(this.i18n.t('cfg.tagExiste')); return; }
     if (id) {
       const old = this.tags().find(t => t.id === id);
       if (old && n !== old.nombre) {
@@ -386,7 +445,7 @@ const groups = (res?.groups ?? []) as ImportConflictGroup[];
         if (sameLabel) {
           // El usuario re-escribió el mismo label traducido: solo actualiza color, no renombra.
           this.api.updateTag(id, { nombre: old.nombre, color: this.formTagColor })
-            .subscribe({ next: () => { this.closeModals(); this.api.getTags().subscribe(d => this.tags.set(d)); this.shared.tagsRefresh.update(v => v + 1); }, error: () => this.dialog.toast(this.i18n.t('common.error.save'), 'error') });
+            .subscribe({ next: () => { this.closeModals(); this.api.getTags().subscribe(d => this.tags.set(d)); this.shared.tagsRefresh.update(v => v + 1); }, error: (err: any) => this.errorToast(err, 'cfg.tagExiste', 'common.error.save') });
           return;
         }
         const affected = await new Promise<number>(resolve => {
@@ -400,12 +459,12 @@ const groups = (res?.groups ?? []) as ImportConflictGroup[];
         const ok = await this.dialog.confirm(msg);
         if (!ok) return;
         this.api.updateTag(id, { nombre: n, color: this.formTagColor, propagate: true })
-          .subscribe({ next: () => { this.closeModals(); this.api.getTags().subscribe(d => this.tags.set(d)); this.shared.historialRefresh.update(v => v + 1); this.shared.tagsRefresh.update(v => v + 1); }, error: () => this.dialog.toast(this.i18n.t('common.error.save'), 'error') });
+          .subscribe({ next: () => { this.closeModals(); this.api.getTags().subscribe(d => this.tags.set(d)); this.shared.historialRefresh.update(v => v + 1); this.shared.tagsRefresh.update(v => v + 1); }, error: (err: any) => this.errorToast(err, 'cfg.tagExiste', 'common.error.save') });
         return;
       }
     }
     (id ? this.api.updateTag(id, { nombre: n, color: this.formTagColor }) : this.api.createTag(n, this.formTagColor))
-      .subscribe({ next: () => { this.closeModals(); this.api.getTags().subscribe(d => this.tags.set(d)); this.shared.tagsRefresh.update(v => v + 1); }, error: () => this.dialog.toast(this.i18n.t('common.error.save'), 'error') });
+      .subscribe({ next: () => { this.closeModals(); this.api.getTags().subscribe(d => this.tags.set(d)); this.shared.tagsRefresh.update(v => v + 1); }, error: (err: any) => this.errorToast(err, 'cfg.tagExiste', 'common.error.save') });
   }
   async removeTag(id: number) {
     const tag = this.tags().find(t => t.id === id);
@@ -413,41 +472,83 @@ const groups = (res?.groups ?? []) as ImportConflictGroup[];
     const affected = await new Promise<number>(resolve => {
       this.api.getPostulaciones().subscribe(list => resolve(list.filter(p => p.estado === tag.nombre).length));
     });
+    this.pendingDeleteKind = 'tag';
+    this.pendingDeleteId = id;
+    this.pendingDeleteCount = affected;
     if (affected === 0) {
       const ok = await this.dialog.confirm(this.i18n.t('cfg.deleteTagSimple', { tag: this.i18n.tagLabel(tag.nombre) }));
       if (!ok) return;
-      this.api.deleteTag(id).subscribe({ next: () => { this.api.getTags().subscribe(d => this.tags.set(d)); this.shared.tagsRefresh.update(v => v + 1); this.shared.historialRefresh.update(v => v + 1); }, error: () => this.dialog.toast(this.i18n.t('common.error.delete'), 'error') });
+      this.deleteCurrent();
       return;
     }
     const others = this.tags().filter(t => t.id !== id);
     if (others.length === 0) {
       this.dialog.toast(this.i18n.t('cfg.sinOtrasEtiquetas'), 'error');
+      this.cancelReassign();
       return;
     }
-    this.pendingDeleteId = id;
-    this.pendingDeleteCount = affected;
-    this.reassignTagId = others[0].id;
-    this.deleteTagModal.set(true);
+    this.reassignDestId = others[0].id;
+    this.reassignModal.set('tag');
   }
 
-  pendingTagName() { return this.tags().find(t => t.id === this.pendingDeleteId)?.nombre ?? ''; }
-  deleteDestTags() { return this.tags().filter(t => t.id !== this.pendingDeleteId); }
-
-  cancelDeleteTag() {
-    this.deleteTagModal.set(false);
-    this.pendingDeleteId = null;
-    this.reassignTagId = null;
-  }
-
-  confirmDeleteTag() {
+  pendingDeleteName() {
     const id = this.pendingDeleteId;
-    if (id === null || this.reassignTagId === null) { this.dialog.toast(this.i18n.t('cfg.elegiDestino'), 'error'); return; }
-    this.api.deleteTag(id, this.reassignTagId).subscribe({
+    if (id == null) return '';
+    if (this.pendingDeleteKind === 'categoria') return this.categorias().find(c => c.id === id)?.nombre ?? '';
+    return this.tags().find(t => t.id === id)?.nombre ?? '';
+  }
+
+  reassignDestOptions() {
+    const kind = this.pendingDeleteKind;
+    const list = kind === 'categoria' ? this.categorias() : this.tags();
+    return list.filter(x => x.id !== this.pendingDeleteId).map(x => ({
+      id: x.id,
+      label: kind === 'categoria' ? this.i18n.categoriaLabel(x.nombre) : this.i18n.tagLabel(x.nombre),
+    }));
+  }
+
+  cancelReassign() {
+    this.reassignModal.set(null);
+    this.pendingDeleteKind = null;
+    this.pendingDeleteId = null;
+    this.pendingDeleteCount = 0;
+    this.reassignDestId = null;
+  }
+
+  private deleteRequest(id: number, dest?: number) {
+    return this.pendingDeleteKind === 'categoria'
+      ? this.api.deleteCategoria(id, dest)
+      : this.api.deleteTag(id, dest);
+  }
+
+  private refreshAfterDelete() {
+    this.api.getTags().subscribe(d => this.tags.set(d));
+    this.api.getCategorias().subscribe(d => this.categorias.set(d));
+    this.shared.tagsRefresh.update(v => v + 1);
+    this.shared.categoriasRefresh.update(v => v + 1);
+    this.shared.historialRefresh.update(v => v + 1);
+    this.shared.templatesRefresh.update(v => v + 1);
+  }
+
+  deleteCurrent() {
+    const id = this.pendingDeleteId;
+    if (id === null) { this.dialog.toast(this.i18n.t('common.error.delete'), 'error'); return; }
+    this.deleteRequest(id).subscribe({
       next: () => {
-        this.cancelDeleteTag();
-        this.api.getTags().subscribe(d => this.tags.set(d));
-        this.shared.tagsRefresh.update(v => v + 1);
-        this.shared.historialRefresh.update(v => v + 1);
+        this.cancelReassign();
+        this.refreshAfterDelete();
+      },
+      error: () => this.dialog.toast(this.i18n.t('common.error.delete'), 'error'),
+    });
+  }
+
+  confirmReassign() {
+    const id = this.pendingDeleteId;
+    if (id === null || this.reassignDestId === null) { this.dialog.toast(this.i18n.t('cfg.elegiDestino'), 'error'); return; }
+    this.deleteRequest(id, this.reassignDestId).subscribe({
+      next: () => {
+        this.cancelReassign();
+        this.refreshAfterDelete();
       },
       error: () => this.dialog.toast(this.i18n.t('common.error.delete'), 'error'),
     });

@@ -36,8 +36,8 @@ export class ApiService {
   setDefaultCategoria(id: number): Observable<any> {
     return this.http.put(`${this.base}/categorias/${id}/default`, {});
   }
-  deleteCategoria(id: number): Observable<any> {
-    return this.http.delete(`${this.base}/categorias/${id}`);
+  deleteCategoria(id: number, dest?: number): Observable<any> {
+    return this.http.delete(`${this.base}/categorias/${id}`, dest !== undefined ? { body: { dest } } : {});
   }
 
   // ── Idiomas ──

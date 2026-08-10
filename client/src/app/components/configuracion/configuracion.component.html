@@ -228,18 +228,22 @@
       </div>
     }
 
-    <!-- ELIMINAR TAG: REASIGNACIÓN -->
-    @if (deleteTagModal()) {
+    <!-- ELIMINAR CON REASIGNACIÓN -->
+    @if (reassignModal()) {
       <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]" style="background: rgba(0,0,0,0.35);" backdropDismiss (dismissed)="onEsc()">
         <div class="card w-full max-w-sm mx-4 animate-fade-in" (click)="$event.stopPropagation()">
-          <h3 class="text-base font-semibold mb-2">{{ i18n.t('cfg.deleteTagTitle') }}</h3>
-          <p class="text-sm mb-4" style="opacity: 0.7;">{{ i18n.t('cfg.deleteTagMsg', { tag: i18n.tagLabel(pendingTagName()), count: pendingDeleteCount }) }}</p>
-          <select [(ngModel)]="reassignTagId" class="text-sm">
-            @for (t of deleteDestTags(); track t.id) { <option [ngValue]="t.id">{{ i18n.tagLabel(t.nombre) }}</option> }
+          <h3 class="text-base font-semibold mb-2">{{ pendingDeleteKind === 'categoria' ? i18n.t('cfg.deleteCatTitle') : i18n.t('cfg.deleteTagTitle') }}</h3>
+          @if (pendingDeleteKind === 'categoria') {
+            <p class="text-sm mb-4" style="opacity: 0.7;">{{ i18n.t('cfg.deleteCatMsg', { cat: i18n.categoriaLabel(pendingDeleteName()), count: pendingDeleteCount }) }}</p>
+          } @else {
+            <p class="text-sm mb-4" style="opacity: 0.7;">{{ i18n.t('cfg.deleteTagMsg', { tag: i18n.tagLabel(pendingDeleteName()), count: pendingDeleteCount }) }}</p>
+          }
+          <select [(ngModel)]="reassignDestId" class="text-sm">
+            @for (o of reassignDestOptions(); track o.id) { <option [ngValue]="o.id">{{ o.label }}</option> }
           </select>
           <div class="flex justify-end gap-2 mt-5">
-            <button class="btn btn-outline" (click)="cancelDeleteTag()">{{ i18n.t('common.cancel') }}</button>
-            <button class="btn btn-primary" (click)="confirmDeleteTag()">{{ i18n.t('cfg.deleteAndReassign') }}</button>
+            <button class="btn btn-outline" (click)="cancelReassign()">{{ i18n.t('common.cancel') }}</button>
+            <button class="btn btn-primary" (click)="confirmReassign()">{{ i18n.t('cfg.deleteAndReassign') }}</button>
           </div>
         </div>
       </div>
