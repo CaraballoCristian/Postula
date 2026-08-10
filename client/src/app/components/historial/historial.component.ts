@@ -605,7 +605,7 @@ export class HistorialComponent {
       nombre_empleado: p.nombre_empleado,
       puesto_empleado: p.puesto_empleado,
       estado: estadoInicial,
-      link_empresa: p.link_empresa || '',
+      link_empresa: this.empresaLink(p.empresa) || '',
       contacto_empleado: p.contacto_empleado || '',
       notas: p.notas || '',
     };

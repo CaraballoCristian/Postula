@@ -86,9 +86,10 @@ router.post('/', (req: AuthRequest, res: Response) => {
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
-  // Opción A: el mensaje de empresa se guarda en la tabla `empresas` (una sola vez),
-  // no duplicado por postulación. La columna de la postulación queda NULL.
+  // El link/mensaje de empresa se guarda en la tabla `empresas` (fuente única), no
+  // duplicado por postulación. Las columnas de la postulación quedan vacías.
   const msgEmp = typeof resultado_empresa === 'string' && resultado_empresa.trim() ? resultado_empresa.trim() : '';
+  const linkEmp = typeof link_empresa === 'string' && link_empresa.trim() ? link_empresa.trim() : '';
 
   const result = stmt.run(
     userId,
@@ -105,19 +106,20 @@ router.post('/', (req: AuthRequest, res: Response) => {
     resultado_recruiter || null,
     notas || '',
     estado || 'solicitado',
-    link_empresa || '',
+    '',
     contacto_empleado || '',
     favorito || 0,
   );
 
-  if (msgEmp && empresa) {
+  if ((msgEmp || linkEmp) && empresa) {
     const ename = String(empresa).trim();
     const ex = db.prepare('SELECT id FROM empresas WHERE user_id = ? AND lower(nombre) = lower(?)').get(userId, ename) as any;
     if (ex) {
-      db.prepare('UPDATE empresas SET resultado_empresa = ? WHERE id = ?').run(msgEmp, ex.id);
+      db.prepare("UPDATE empresas SET link = COALESCE(NULLIF(?, ''), link), resultado_empresa = COALESCE(NULLIF(?, ''), resultado_empresa) WHERE id = ? AND user_id = ?")
+        .run(linkEmp, msgEmp, ex.id, userId);
     } else {
       db.prepare('INSERT INTO empresas (user_id, nombre, link, resultado_empresa) VALUES (?, ?, ?, ?)')
-        .run(userId, ename, link_empresa || '', msgEmp);
+        .run(userId, ename, linkEmp, msgEmp);
     }
   }
 
@@ -144,6 +146,7 @@ router.put('/:id', (req: AuthRequest, res: Response) => {
   }
 
   const msgEmp = typeof resultado_empresa === 'string' && resultado_empresa.trim() ? resultado_empresa.trim() : '';
+  const linkEmp = typeof link_empresa === 'string' && link_empresa.trim() ? link_empresa.trim() : '';
 
   const result = db.prepare(`
     UPDATE postulaciones SET
@@ -155,7 +158,7 @@ router.put('/:id', (req: AuthRequest, res: Response) => {
       puesto_empleado = COALESCE(?, puesto_empleado),
       estado = COALESCE(?, estado),
       notas = COALESCE(?, notas),
-      link_empresa = COALESCE(?, link_empresa),
+      link_empresa = '',
       contacto_empleado = COALESCE(?, contacto_empleado),
       favorito = COALESCE(?, favorito),
       resultado_email = COALESCE(?, resultado_email),
@@ -171,7 +174,6 @@ router.put('/:id', (req: AuthRequest, res: Response) => {
     puesto_empleado !== undefined ? puesto_empleado : null,
     estado !== undefined ? estado : null,
     notas !== undefined ? notas : null,
-    link_empresa !== undefined ? link_empresa : null,
     contacto_empleado !== undefined ? contacto_empleado : null,
     favorito !== undefined ? favorito : null,
     resultado_email !== undefined ? resultado_email : null,
@@ -181,14 +183,15 @@ router.put('/:id', (req: AuthRequest, res: Response) => {
     userId,
   );
 
-  if (msgEmp && existing.empresa) {
-    const ename = String(existing.empresa).trim();
+  if ((msgEmp || linkEmp) && (empresa !== undefined ? String(empresa).trim() : existing.empresa)) {
+    const ename = String(empresa !== undefined ? empresa : existing.empresa).trim();
     const ex = db.prepare('SELECT id FROM empresas WHERE user_id = ? AND lower(nombre) = lower(?)').get(userId, ename) as any;
     if (ex) {
-      db.prepare('UPDATE empresas SET resultado_empresa = ? WHERE id = ?').run(msgEmp, ex.id);
+      db.prepare("UPDATE empresas SET link = COALESCE(NULLIF(?, ''), link), resultado_empresa = COALESCE(NULLIF(?, ''), resultado_empresa) WHERE id = ? AND user_id = ?")
+        .run(linkEmp, msgEmp, ex.id, userId);
     } else {
       db.prepare('INSERT INTO empresas (user_id, nombre, link, resultado_empresa) VALUES (?, ?, ?, ?)')
-        .run(userId, ename, link_empresa || '', msgEmp);
+        .run(userId, ename, linkEmp, msgEmp);
     }
   }
 

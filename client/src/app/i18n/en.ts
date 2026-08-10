@@ -268,6 +268,7 @@ export const en: Record<TR, string> = {
   'backup.importError': 'Error importing backup',
   'backup.importMergeTitle': 'Review companies with differences',
   'backup.importMergeHint': 'Only companies with their own, different link or message. Choose what to keep per field; the rest is imported automatically.',
+  'backup.countHint': 'Applications in your account → applications in the backup',
   'backup.pillCuenta': 'Account',
   'backup.pillBackup': 'Backup',
   'backup.mergeDefault': 'Will use:',
@@ -277,6 +278,13 @@ export const en: Record<TR, string> = {
   'backup.link': 'Company link',
   'backup.mensaje': 'Company email/message',
   'backup.newCompany': 'New company (no match with existing)',
+  'backup.postsTitle': 'Applications with differences',
+  'backup.postsHint': 'Matching applications (company, role, category, language and date) with different internal fields were also found. Choose which one to keep for each.',
+  'backup.posts': 'Applications',
+  'backup.postExisting': 'Keep the one from this account',
+  'backup.postImported': 'Use the one from the backup',
+  'backup.postFields': 'Fields with differences',
+  'backup.postTitle': 'Application {oferta}',
 
   // trash
   'pap.ver': 'Trash',

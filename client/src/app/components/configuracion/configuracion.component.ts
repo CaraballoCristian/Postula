@@ -313,8 +313,8 @@ export class ConfiguracionComponent {
         if (!ok) { input.value = ''; return; }
         this.api.importPreview(data).subscribe({
           next: (res) => {
-            const groups = (res?.groups ?? []) as ImportConflictGroup[];
-            const conflicted = groups.some(g => g.conflictLink || g.conflictMensaje);
+const groups = (res?.groups ?? []) as ImportConflictGroup[];
+      const conflicted = groups.some(g => g.conflictLink || g.conflictMensaje || (g.postConflicts?.length ?? 0) > 0);
             if (!conflicted) {
               this.doImport(data, {});
             } else {

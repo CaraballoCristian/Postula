@@ -3,6 +3,7 @@ import { ApiService } from '../../services/api.service';
 import { SharedStateService } from '../../services/shared-state.service';
 import { I18nService } from '../../services/i18n.service';
 import { Postulacion, Categoria, Idioma, Tag } from '../../models/interfaces';
+import { OTRAS } from '../../models/constants';
 import { dayKey } from '../../utils/utils';
 
 interface EstadoGroup {
@@ -69,6 +70,7 @@ export class DashboardComponent implements OnInit {
   from = signal<Date | null>(null);
   to = signal<Date | null>(null);
   quickOpts: Quick[] = ['today', 'week', 'month', 'all'];
+  readonly OTRAS = OTRAS;
 
   quickLabel(q: Quick): string {
     return this.i18n.t(`dash.${q}` as any);
@@ -183,12 +185,11 @@ export class DashboardComponent implements OnInit {
       prev = this.countRange(prevStart, new Date(curStart.getTime() - day));
     } else {
       type = 'week';
-      const to = now;
-      const from = new Date(to.getTime() - 6 * day);
-      const prevTo = new Date(from.getTime() - day);
-      const prevFrom = new Date(prevTo.getTime() - 6 * day);
-      cur = this.countRange(from, to);
-      prev = this.countRange(prevFrom, prevTo);
+      // Semana calendario anclada al lunes (misma lógica que el gráfico de tendencia).
+      const anchor = new Date(now.getTime() - ((now.getDay() + 6) % 7) * day); // lunes de esta semana
+      const prevAnchor = new Date(anchor.getTime() - 7 * day); // lunes de la semana anterior
+      cur = this.countRange(anchor, now);
+      prev = this.countRange(prevAnchor, new Date(anchor.getTime() - day));
     }
     const delta = prev === 0 ? (cur === 0 ? 0 : 100) : Math.round(((cur - prev) / prev) * 100);
     return { delta, cur, prev, type };
@@ -281,24 +282,27 @@ export class DashboardComponent implements OnInit {
 
   // ── Estado ──
   private stateLabel(value: string) {
-    if (!value) return this.i18n.t('dash.sinEstado');
+    if (!value || value === '__sin__') return this.i18n.t('dash.sinEstado');
     return this.i18n.tagLabel(value);
   }
   private stateColor(value: string) {
-    if (!value) return 'var(--surface-hover)';
+    if (!value || value === '__sin__') return 'var(--surface-hover)';
     return this.tags().find(t => t.nombre === value)?.color || 'var(--surface-hover)';
   }
   estados = computed<EstadoGroup[]>(() => {
+    // Solo cuentan las tags reales de la cuenta; estados huérfanos (importados con la tag
+    // renombrada/inexistente) y __otras__ colapsan a una sola porción "Sin etiqueta".
+    const known = new Set(this.tags().map(t => t.nombre));
     const map = new Map<string, number>();
     for (const p of this.all()) {
-      const key = p.estado;
+      const key = p.estado && known.has(p.estado) ? p.estado : (p.estado ? this.OTRAS : '__sin__');
       map.set(key, (map.get(key) || 0) + 1);
     }
     const total = this.all().length || 1;
     return [...map.entries()].map(([value, count]) => ({
-      value: value || '__sin__',
-      label: this.stateLabel(value),
-      color: this.stateColor(value),
+      value,
+      label: value === this.OTRAS ? this.i18n.t('hist.sinEtiqueta') : this.stateLabel(value),
+      color: value === this.OTRAS ? '#eee' : this.stateColor(value),
       count,
       pct: Math.round((count / total) * 100),
     })).sort((a, b) => b.count - a.count);

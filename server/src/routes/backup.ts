@@ -12,6 +12,8 @@ const TABLES = ['categorias', 'templates', 'config', 'idiomas', 'tags', 'postula
 const SIN_ETIQUETA = '__otras__';
 
 // Export: snapshot del usuario en JSON (sin columna user_id, es interna).
+// Fuente única de link/mensaje de empresa = tabla `empresas`. Las postulaciones
+// salen con esos campos vacíos para no duplicar; solo referencian por nombre.
 router.get('/export', (req: AuthRequest, res: Response) => {
   const userId = req.userId!;
   const strip = (rows: any[]) => rows.map(({ user_id, ...rest }: any) => rest);
@@ -23,10 +25,13 @@ router.get('/export', (req: AuthRequest, res: Response) => {
     postulaciones: strip(
       db.prepare('SELECT * FROM postulaciones WHERE user_id = ? ORDER BY id').all(userId).map((r: any) => ({
         ...r,
+        link_empresa: '',
+        resultado_empresa: null,
         template_ids: JSON.parse(r.template_ids || '[]'),
         valores_usados: JSON.parse(r.valores_usados || '{}'),
       }))
     ),
+    empresas: strip(db.prepare('SELECT * FROM empresas WHERE user_id = ? ORDER BY id').all(userId)),
     idiomas: strip(db.prepare('SELECT * FROM idiomas WHERE user_id = ? ORDER BY id').all(userId)),
     tags: strip(db.prepare('SELECT * FROM tags WHERE user_id = ? ORDER BY id').all(userId)),
   };
@@ -42,12 +47,28 @@ type GrupoInfo = {
   imported: { link: string | null; mensaje: string | null; count: number };
   conflictLink: boolean;
   conflictMensaje: boolean;
+  postConflicts: PostConflict[];
 };
 
-type Decision = { link: 'existing' | 'imported'; mensaje: 'existing' | 'imported' };
+type Decision = { link: 'existing' | 'imported'; mensaje: 'existing' | 'imported'; posts: Record<string, 'existing' | 'imported'> };
 type GroupPlan = { canonical: string | null; link: string | null; mensaje: string | null };
 
+// Conflictos a nivel POSTULACIÓN: misma empresa + misma dedup-key (oferta/categoría/idioma/fecha)
+// pero campos internos distintos. El usuario resuelve por post (Cuenta vs Backup).
+const POST_FIELDS = ['resultado_email', 'resultado_recruiter', 'contacto_empleado', 'notas', 'favorito', 'estado'] as const;
+type PostConflict = {
+  key: string;
+  oferta: string;
+  fecha: string;
+  fields: string[];
+  existingId: number | null;
+  importedIdx: number;
+  existing: Record<string, string | null>;
+  imported: Record<string, string | null>;
+};
+
 const keyOf = (name: unknown) => (typeof name === 'string' ? name.trim().toLowerCase() : '');
+const norm = (v: unknown): string => (v == null ? '' : String(v).trim().toLowerCase());
 
 function firstNonEmpty(rows: any[], get: (r: any) => unknown): string | null {
   for (const r of rows) {
@@ -68,25 +89,85 @@ type SideInfo = {
 
 const emptySide = (): SideInfo => ({ count: 0, nombre: '', links: new Set(), msgs: new Set(), repLink: null, repMensaje: null });
 
-// Los sets se usan solo para DETECTAR diferencias: se normalizan (trim + lowercase) para que
-// "Google.com" !== "google.com" (o con espacios) no dispare un conflicto inexistente. Los valores
-// representativos (repLink/repMensaje) conservan el string original que se muestra/importa.
-function addValues(side: SideInfo, rows: any[], getLink: (r: any) => unknown, getMsg: (r: any) => unknown) {
-  for (const r of rows) {
-    const l = getLink(r); if (typeof l === 'string' && l.trim()) side.links.add(l.trim().toLowerCase());
-    const m = getMsg(r); if (typeof m === 'string' && m.trim()) side.msgs.add(m.trim().toLowerCase());
+// El link/mensaje de empresa vive en `empresas` (fuente única). Los sets se usan para
+// DETECTAR diferencias (normalizados en minúsculas). El representativo guarda el string
+// original. Si la fila empresa no trae valor (cuenta previa a la migración o backup viejo),
+// se cae al primer no-vacío de las postulaciones.
+function applyCompanyValues(side: SideInfo, emp: any | undefined, posts: any[], getLink: (r: any) => unknown, getMsg: (r: any) => unknown) {
+  const empLink = emp && typeof emp.link === 'string' && emp.link.trim() ? String(emp.link).trim() : null;
+  const empMsg = emp && typeof emp.resultado_empresa === 'string' && emp.resultado_empresa.trim() ? String(emp.resultado_empresa).trim() : null;
+  if (empLink) { side.links.add(empLink.toLowerCase()); side.repLink = empLink; }
+  if (empMsg) { side.msgs.add(empMsg.toLowerCase()); side.repMensaje = empMsg; }
+  if (!empLink) {
+    const l = firstNonEmpty(posts, getLink);
+    if (l) { side.links.add(l.toLowerCase()); side.repLink = l; }
   }
-  if (!side.repLink) side.repLink = firstNonEmpty(rows, getLink);
-  if (!side.repMensaje) side.repMensaje = firstNonEmpty(rows, getMsg);
+  if (!empMsg) {
+    const m = firstNonEmpty(posts, getMsg);
+    if (m) { side.msgs.add(m.toLowerCase()); side.repMensaje = m; }
+  }
 }
 
-// Agrupa posts existentes del usuario + posts del backup por empresa (sin diferenciar mayúsculas).
-// El conflicto se detecta comparando el CONJUNTO de valores distintos (link/mensaje) de cada lado:
-// si ambos lados tienen valores y alguno difiere, hay conflicto. Así se detectan también diferencias
-// que caen en posts no-primero (antes solo se comparaba el primer valor y se perdían conflictos).
+const postKeyOf = (p: any) =>
+  [String(p.oferta_laboral || '').toLowerCase(), String(p.categoria_id ?? ''), String(p.idioma || ''), String(p.fecha || '')].join('|');
+
+// Empareja posts por dedup-key dentro de una empresa. Devuelve los pares que difieren
+// en algún campo de POST_FIELDS (con la info que necesita el import para aplicar la decisión).
+function pairPostConflicts(existings: any[], importeds: any[]): PostConflict[] {
+  const used = new Set<number>();
+  const out: PostConflict[] = [];
+  for (let i = 0; i < importeds.length; i++) {
+    const im = importeds[i];
+    let exIdx = -1;
+    for (let j = 0; j < existings.length; j++) {
+      if (used.has(j)) continue;
+      if (postKeyOf(existings[j]) === postKeyOf(im) && norm(existings[j].oferta_laboral) === norm(im.oferta_laboral)) {
+        exIdx = j;
+        break;
+      }
+    }
+    if (exIdx < 0) continue;
+    const ex = existings[exIdx];
+    const fields: string[] = [];
+    for (const f of POST_FIELDS) {
+      if (f === 'favorito') {
+        if ((Number(ex[f]) || 0) !== (Number(im[f]) || 0)) fields.push(f);
+      } else {
+        const a = ex[f] === undefined || ex[f] === null ? '' : String(ex[f]);
+        const b = im[f] === undefined || im[f] === null ? '' : String(im[f]);
+        if (norm(a) !== norm(b)) fields.push(f);
+      }
+    }
+    if (fields.length === 0) { used.add(exIdx); continue; }
+    used.add(exIdx);
+    const exVals: Record<string, string | null> = {};
+    const imVals: Record<string, string | null> = {};
+    for (const f of fields) {
+      exVals[f] = ex[f] == null ? null : String(ex[f]);
+      imVals[f] = im[f] == null ? null : String(im[f]);
+    }
+    out.push({
+      key: postKeyOf(im),
+      oferta: String(im.oferta_laboral || ''),
+      fecha: String(im.fecha || ''),
+      fields,
+      existingId: ex.id ?? null,
+      importedIdx: i,
+      existing: exVals,
+      imported: imVals,
+    });
+  }
+  return out;
+}
+
+// Agrupa empresas del usuario + del backup. El conflicto de link/mensaje se detecta
+// comparando la fila `empresas` de cada lado (fuente única). Además se detectan
+// conflictos por postulación (campos internos) para resolverlos en el modal.
 function computeGroups(data: any, userId: number): Map<string, GrupoInfo> {
   const existingPosts = db.prepare(
-    'SELECT empresa, link_empresa, resultado_empresa FROM postulaciones WHERE user_id = ? AND deleted_at IS NULL'
+    `SELECT id, empresa, oferta_laboral, categoria_id, idioma, link_empresa, resultado_empresa,
+            resultado_email, resultado_recruiter, contacto_empleado, notas, favorito, estado, fecha
+     FROM postulaciones WHERE user_id = ? AND deleted_at IS NULL`
   ).all(userId) as any[];
   const existingEmp = db.prepare('SELECT nombre, link, resultado_empresa FROM empresas WHERE user_id = ?').all(userId) as any[];
 
@@ -103,28 +184,25 @@ function computeGroups(data: any, userId: number): Map<string, GrupoInfo> {
     if (!side.nombre) side.nombre = String(p.empresa).trim();
     accountByKey.set(key, side);
   }
-  for (const [key, list] of postsByKey) {
-    const side = accountByKey.get(key)!;
-    addValues(side, list, r => r.link_empresa, r => r.resultado_empresa);
-  }
+  const empByKey = new Map<string, any>();
   for (const e of existingEmp) {
     const key = keyOf(e.nombre);
     if (!key) continue;
+    if (!empByKey.has(key)) empByKey.set(key, e);
     const side = accountByKey.get(key) ?? emptySide();
-    if (e.link) {
-      side.links.add(String(e.link).trim().toLowerCase());
-      side.repLink = String(e.link).trim(); // el registro de empresa es la fuente de verdad
-    }
-    if (e.resultado_empresa) {
-      side.msgs.add(String(e.resultado_empresa).trim().toLowerCase());
-      side.repMensaje = String(e.resultado_empresa).trim();
-    }
     if (!side.nombre) side.nombre = String(e.nombre).trim();
+    side.count = Math.max(side.count, 0);
     accountByKey.set(key, side);
   }
+  for (const [key, emp] of empByKey) {
+    const side = accountByKey.get(key)!;
+    applyCompanyValues(side, emp, postsByKey.get(key) ?? [], r => r.link_empresa, r => r.resultado_empresa);
+  }
 
+  // Lado importado: empresas + posts del backup.
   const importedByKey = new Map<string, SideInfo>();
   const impPostsByKey = new Map<string, any[]>();
+  const impEmpByKey = new Map<string, any>();
   for (const p of (data.postulaciones ?? []) as any[]) {
     const key = keyOf(p.empresa);
     if (!key) continue;
@@ -136,18 +214,23 @@ function computeGroups(data: any, userId: number): Map<string, GrupoInfo> {
     if (!side.nombre) side.nombre = String(p.empresa).trim();
     importedByKey.set(key, side);
   }
-  for (const [key, list] of impPostsByKey) {
+  for (const e of (data.empresas ?? []) as any[]) {
+    const key = keyOf(e.nombre);
+    if (!key) continue;
+    if (!impEmpByKey.has(key)) impEmpByKey.set(key, e);
+    const side = importedByKey.get(key) ?? emptySide();
+    if (!side.nombre) side.nombre = String(e.nombre).trim();
+    importedByKey.set(key, side);
+  }
+  for (const [key, emp] of impEmpByKey) {
     const side = importedByKey.get(key)!;
-    addValues(side, list, r => r.link_empresa, r => r.resultado_empresa);
+    applyCompanyValues(side, emp, impPostsByKey.get(key) ?? [], r => r.link_empresa, r => r.resultado_empresa);
   }
 
   const nameByKey = new Map<string, string>();
   for (const [k, side] of accountByKey) if (!nameByKey.has(k)) nameByKey.set(k, side.nombre);
   for (const [k, side] of importedByKey) if (!nameByKey.has(k)) nameByKey.set(k, side.nombre);
 
-  // Conflicto si la empresa existe en ambos lados y alguno de ellos trae un valor (link/mensaje)
-  // que no coincide con el otro lado. Un lado vacío cuenta como diferencia. Si la empresa solo
-  // existe en un lado no hay conflicto (se importa/ignora directamente).
   const differs = (a: Set<string>, b: Set<string>, exCount: number, imCount: number) =>
     exCount > 0 && imCount > 0 && (a.size > 0 || b.size > 0) &&
     (a.size !== b.size || Array.from(a).some(v => !b.has(v)) || Array.from(b).some(v => !a.has(v)));
@@ -157,6 +240,7 @@ function computeGroups(data: any, userId: number): Map<string, GrupoInfo> {
   for (const key of keys) {
     const ex = accountByKey.get(key) ?? emptySide();
     const im = importedByKey.get(key) ?? emptySide();
+    const postConflicts = pairPostConflicts(postsByKey.get(key) ?? [], impPostsByKey.get(key) ?? []);
     groups.set(key, {
       key,
       nombre: nameByKey.get(key) ?? '',
@@ -164,6 +248,7 @@ function computeGroups(data: any, userId: number): Map<string, GrupoInfo> {
       imported: { link: im.repLink, mensaje: im.repMensaje, count: im.count },
       conflictLink: differs(ex.links, im.links, ex.count, im.count),
       conflictMensaje: differs(ex.msgs, im.msgs, ex.count, im.count),
+      postConflicts,
     });
   }
   return groups;
@@ -177,17 +262,19 @@ router.post('/preview', (req: AuthRequest, res: Response) => {
     return;
   }
   const groups = [...computeGroups(data, req.userId!).values()];
-  console.error(`[backup] preview user=${req.userId} grupos=${groups.length} conflictos=${groups.filter(g => g.conflictLink || g.conflictMensaje).length}`);
+  const conflictos = groups.filter(g => g.conflictLink || g.conflictMensaje).length;
+  const posts = groups.reduce((acc, g) => acc + g.postConflicts.length, 0);
+  console.error(`[backup] preview user=${req.userId} grupos=${groups.length} conflictos=${conflictos} posts=${posts}`);
   res.json({ groups });
 });
 
 // Import/restaurar: trae el historial (postulaciones) con su contexto de categorías,
 // plantillas e idiomas. NO importa config (datos personales) ni tags (evita duplicar
-// nombres renombrados). Las categorías/plantillas/idiomas se reaplican "crear si falta",
-// nunca actualizan lo existente. El estado de cada postulación se conserva tal cual viene
-// del backup; si la etiqueta no existe en la cuenta, la postulación agrupa en "Sin etiqueta".
-// Las postulaciones de empresas ya existentes se fusionan: adoptan el nombre canónico y el
-// link/mensaje elegido (o el no-vacío si solo una lo trae; en conflicto se usa 'decisions').
+// nombres renombrados). El link/mensaje de empresa se aplica solo en `empresas`
+// (fuente única); las postulaciones referencian por nombre (campos vacíos).
+// Las postulaciones del backup que coinciden por dedup-key con una existente se
+// resuelven por decisión ('existing' la conserva, 'imported' la actualiza con los
+// campos del backup); las que no coinciden se insertan como nuevas.
 router.post('/import', (req: AuthRequest, res: Response) => {
   const data = req.body?.data;
   const decisions = (req.body?.decisions ?? {}) as Record<string, Decision>;
@@ -199,8 +286,6 @@ router.post('/import', (req: AuthRequest, res: Response) => {
 
   const num = (v: unknown, fallback: number) => { const n = Number(v); return Number.isNaN(n) ? fallback : n; };
 
-  // Tags reales de la cuenta receptora (case-insensitive): si el estado del backup coincide con
-  // una etiqueta existente se usa su nombre canónico; si no, queda SIN_ETIQUETA (ausencia de tag).
   const tagNames = new Map<string, string>();
   for (const t of (db.prepare('SELECT nombre FROM tags WHERE user_id = ?').all(userId) as any[])) {
     const n = String(t.nombre || '').trim();
@@ -212,7 +297,7 @@ router.post('/import', (req: AuthRequest, res: Response) => {
     return tagNames.get(clean.toLowerCase()) ?? SIN_ETIQUETA;
   };
 
-  // Plan de merge por empresa
+  // Plan de merge por empresa (link/mensaje → solo `empresas`).
   const groups = computeGroups(data, userId);
   const planByKey = new Map<string, GroupPlan>();
   for (const g of groups.values()) {
@@ -270,9 +355,10 @@ router.post('/import', (req: AuthRequest, res: Response) => {
     }
   }
 
-  // ── Postulaciones (id nuevo; dedup; merge por empresa) ──
+  // ── Postulaciones (id nuevo; dedup por empresa; resolución por post) ──
   const merge = db.transaction(() => {
     let skipped = 0;
+    let updated = 0;
     const mapTpl = (ids: any): number[] => {
       const out: number[] = [];
       for (const x of (ids ?? [])) {
@@ -284,55 +370,63 @@ router.post('/import', (req: AuthRequest, res: Response) => {
     const dupPost = db.prepare(`SELECT id FROM postulaciones WHERE user_id = ? AND
       empresa = ? AND oferta_laboral = ? AND COALESCE(categoria_id,-1) = COALESCE(?,-1) AND COALESCE(idioma,'') = COALESCE(?,'') AND
       COALESCE(fecha,'') = COALESCE(?,'')`);
+    const updatePostFields = db.prepare(
+      `UPDATE postulaciones SET oferta_laboral = ?, template_ids = ?, resultado_email = ?,
+        resultado_recruiter = ?, contacto_empleado = ?, notas = ?, favorito = ?, estado = ?
+       WHERE id = ? AND user_id = ?`
+    );
     const insPost = db.prepare(`INSERT INTO postulaciones
       (user_id, empresa, oferta_laboral, categoria_id, idioma, nombre_empleado, puesto_empleado,
         template_ids, valores_usados, resultado_email, resultado_empresa, resultado_recruiter, notas, estado,
         link_empresa, contacto_empleado, favorito, deleted_at, fecha, created_at)
       VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?,?)`);
-    for (const p of (data.postulaciones ?? []) as any[]) {
+    const imported = (data.postulaciones ?? []) as any[];
+    for (let i = 0; i < imported.length; i++) {
+      const p = imported[i];
       const catId = catMap.get(num(p.categoria_id, 0)) ?? null;
       const tplIds = mapTpl(p.template_ids);
       const fecha = p.fecha || new Date().toISOString();
-      // El estado se normaliza a la tag de la cuenta (si coincide) o a SIN_ETIQUETA ("Sin etiqueta").
-      // Se conserva el estado original solo si la tag ya existe en la cuenta receptora.
       const estado = normalizeEstado(p.estado);
-      // Merge por empresa: nombre canónico y link/mensaje según decisión (o no-vacío).
-      const plan = planByKey.get(keyOf(p.empresa));
-      const empresa = plan?.canonical ?? String(p.empresa || '').trim();
-      const link = plan?.link ?? (typeof p.link_empresa === 'string' ? p.link_empresa.trim() : '');
-      const mensaje = plan?.mensaje ?? (typeof p.resultado_empresa === 'string' ? p.resultado_empresa.trim() : null);
+      const empresaNom = String(p.empresa || '').trim();
+      const key = keyOf(empresaNom);
+      const plan = planByKey.get(key);
+      const empresa = plan?.canonical ?? empresaNom;
+
       const dup = dupPost.get(userId, empresa, p.oferta_laboral || '', catId, p.idioma ?? null, fecha) as any;
-      if (dup) { skipped++; continue; }
+      if (dup) {
+        // Coincide con un post existente: aplicar decisión por post si el usuario eligió el backup.
+        const d = decisions[key]?.posts?.[postKeyOf(p)];
+        if (d === 'imported') {
+          updatePostFields.run(
+            p.oferta_laboral || '', JSON.stringify(tplIds),
+            p.resultado_email ?? null, p.resultado_recruiter ?? null,
+            p.contacto_empleado || '', p.notas || '', Number(p.favorito) || 0, estado,
+            dup.id, userId,
+          );
+          updated++;
+        } else {
+          skipped++;
+        }
+        continue;
+      }
+      // Post nuevo: sin link/mensaje de empresa (referencia por nombre → `empresas`).
       insPost.run(
         userId, empresa, p.oferta_laboral || '', catId, p.idioma ?? null,
         p.nombre_empleado || '', p.puesto_empleado || '', JSON.stringify(tplIds),
         JSON.stringify(p.valores_usados || {}),
-        p.resultado_email ?? null, mensaje, p.resultado_recruiter ?? null,
-        p.notas || '', estado, link, p.contacto_empleado || '',
+        p.resultado_email ?? null, null, p.resultado_recruiter ?? null,
+        p.notas || '', estado, '', p.contacto_empleado || '',
         p.favorito ?? 0, p.deleted_at ?? null, fecha, p.created_at || fecha,
       );
     }
-    // Alinea link/mensaje en las postulaciones ya existentes de empresas fusionadas.
-    // COALESCE: si el plan no trae valor (null), se conserva el link/mensaje previo del post
-    // en vez de pisarlo (link_empresa es NOT NULL, un UPDATE con NULL haría rollback de todo).
-    const alignPost = db.prepare(
-      'UPDATE postulaciones SET link_empresa = COALESCE(?, link_empresa), resultado_empresa = COALESCE(?, resultado_empresa) WHERE user_id = ? AND lower(empresa) = ? AND deleted_at IS NULL'
-    );
-    let merged = 0;
-    for (const [key, plan] of planByKey) {
-      if (!plan.canonical || (plan.link == null && plan.mensaje == null)) continue;
-      alignPost.run(plan.link, plan.mensaje, userId, key);
-      merged++;
-    }
 
     // Sincroniza `empresas` (fuente de verdad del link/mensaje en historial) con el plan final.
-    // Se aplica a TODAS las empresas del backup: si la fila existe se actualiza con COALESCE
-    // (conserva lo previo cuando el plan no trae valor); si es nueva se crea con lo elegido.
     const getEmp = db.prepare('SELECT id FROM empresas WHERE user_id = ? AND lower(nombre) = lower(?)');
     const updEmp = db.prepare(
       'UPDATE empresas SET link = COALESCE(?, link), resultado_empresa = COALESCE(?, resultado_empresa) WHERE user_id = ? AND lower(nombre) = lower(?)'
     );
     const insEmp = db.prepare('INSERT INTO empresas (user_id, nombre, link, resultado_empresa) VALUES (?, ?, ?, ?)');
+    let empCreated = 0;
     for (const g of groups.values()) {
       const plan = planByKey.get(g.key);
       if (!plan) continue;
@@ -343,9 +437,10 @@ router.post('/import', (req: AuthRequest, res: Response) => {
         updEmp.run(plan.link, plan.mensaje, userId, nombre);
       } else {
         insEmp.run(userId, nombre, plan.link ?? '', plan.mensaje ?? '');
+        empCreated++;
       }
     }
-    return { skipped, merged };
+    return { skipped, updated, empCreated };
   });
 
   db.pragma('foreign_keys = OFF');
@@ -355,7 +450,8 @@ router.post('/import', (req: AuthRequest, res: Response) => {
     for (const t of TABLES) {
       counts[t] = (db.prepare(`SELECT COUNT(*) as c FROM ${t} WHERE user_id = ?`).get(userId) as any).c;
     }
-    res.json({ ok: true, skipped: result?.skipped ?? 0, merged: result?.merged ?? 0, counts });
+    counts.empresas = (db.prepare('SELECT COUNT(*) as c FROM empresas WHERE user_id = ?').get(userId) as any).c;
+    res.json({ ok: true, skipped: result?.skipped ?? 0, updated: result?.updated ?? 0, empCreated: result?.empCreated ?? 0, counts });
   } catch (e: any) {
     res.status(500).json({ error: 'Error al importar el backup: ' + e.message });
   } finally {

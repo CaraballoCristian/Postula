@@ -235,8 +235,8 @@
                       <div class="flex items-center gap-1.5 min-w-0">
                         <span class="cursor-pointer select-none text-xs" (click)="toggleFav(p); $event.stopPropagation()" [title]="i18n.t('hist.titFavorito')">{{ p.favorito ? '⭐' : '☆' }}</span>
                         <span class="text-xs font-semibold truncate cursor-pointer" (click)="editPost(p)" [title]="p.empresa">{{ p.empresa }}</span>
-                        @if (p.link_empresa) {
-                          <a [href]="fixUrl(p.link_empresa)" target="_blank" rel="noopener" class="no-underline shrink-0" style="color: var(--accent);" [title]="i18n.t('hist.abrirLink')">↗</a>
+                        @if (empresaLink(p.empresa)) {
+                          <a [href]="fixUrl(empresaLink(p.empresa))" target="_blank" rel="noopener" class="no-underline shrink-0" style="color: var(--accent);" [title]="i18n.t('hist.abrirLink')">↗</a>
                         }
                       </div>
                       @if (p.categoria_id) {
@@ -265,7 +265,7 @@
                     </div>
                     @if (expandedId() === p.id) {
                       <div class="mt-1.5 px-2 py-1.5 space-y-1.5 text-[11px]" style="background: var(--surface-hover); border: 1px solid var(--border); border-radius: 0.375rem;">
-                        @if (p.link_empresa) { <div class="truncate"><a [href]="fixUrl(p.link_empresa)" target="_blank" rel="noopener" style="color: var(--accent);">🔗 {{ p.link_empresa }}</a></div> }
+                        @if (empresaLink(p.empresa)) { <div class="truncate"><a [href]="fixUrl(empresaLink(p.empresa))" target="_blank" rel="noopener" style="color: var(--accent);">🔗 {{ empresaLink(p.empresa) }}</a></div> }
                         @if (p.contacto_empleado) { <div class="truncate"><a [href]="fixUrl(p.contacto_empleado)" target="_blank" rel="noopener" style="color: var(--accent);">👤 {{ p.contacto_empleado }}</a></div> }
                         @if (p.notas) { <p style="opacity: 0.6; white-space: pre-wrap;">{{ p.notas }}</p> }
                         @for (tipo of msgTipos; track tipo) {
@@ -279,14 +279,14 @@
                               @if (expandedMsg() === 'email') { <div style="border-top: 1px solid var(--border);"><pre class="text-[11px] whitespace-pre-wrap font-sans leading-relaxed px-2 py-1.5" style="margin: 0;">{{ p.resultado_email }}</pre></div> }
                             </div>
                           }
-                          @if (tipo === 'mensaje_empresa' && p.resultado_empresa) {
+                          @if (tipo === 'mensaje_empresa' && getEmpresaMensaje(p.empresa)) {
                             <div style="border: 1px solid var(--border); border-radius: 0.25rem; overflow: hidden;">
                               <div class="flex items-center gap-2 px-2 py-1 cursor-pointer text-xs" [style.background-color]="expandedMsg() === 'mensaje_empresa' ? 'var(--surface-hover)' : 'transparent'" (click)="toggleMsg('mensaje_empresa')">
                                 <span class="flex-1 font-medium">🏢 {{ i18n.t('hist.expEmpresa') }}</span>
                                 <span style="opacity: 0.4;">{{ expandedMsg() === 'mensaje_empresa' ? '▲' : '▼' }}</span>
-                                <button class="btn btn-ghost btn-sm text-xs" (click)="copyMsg(p.resultado_empresa!); $event.stopPropagation()" [title]="i18n.t('hist.copy')">📋</button>
+                                <button class="btn btn-ghost btn-sm text-xs" (click)="copyMsg(getEmpresaMensaje(p.empresa)!); $event.stopPropagation()" [title]="i18n.t('hist.copy')">📋</button>
                               </div>
-                              @if (expandedMsg() === 'mensaje_empresa') { <div style="border-top: 1px solid var(--border);"><pre class="text-[11px] whitespace-pre-wrap font-sans leading-relaxed px-2 py-1.5" style="margin: 0;">{{ p.resultado_empresa }}</pre></div> }
+                              @if (expandedMsg() === 'mensaje_empresa') { <div style="border-top: 1px solid var(--border);"><pre class="text-[11px] whitespace-pre-wrap font-sans leading-relaxed px-2 py-1.5" style="margin: 0;">{{ getEmpresaMensaje(p.empresa) }}</pre></div> }
                             </div>
                           }
                           @if (tipo === 'mensaje_recruiter' && p.resultado_recruiter) {

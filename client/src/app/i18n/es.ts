@@ -266,6 +266,7 @@ export const es = {
   'backup.importError': 'Error al importar el backup',
   'backup.importMergeTitle': 'Revisá las empresas con diferencias',
   'backup.importMergeHint': 'Solo las empresas con link o mensaje propios y distintos. Elegí qué conservar para cada campo; el resto se importa automáticamente.',
+  'backup.countHint': 'Postulaciones en tu cuenta → postulaciones en el backup',
   'backup.pillCuenta': 'Cuenta',
   'backup.pillBackup': 'Backup',
   'backup.mergeDefault': 'Se usará:',
@@ -275,6 +276,13 @@ export const es = {
   'backup.link': 'Link de la empresa',
   'backup.mensaje': 'Mensaje de la empresa',
   'backup.newCompany': 'Nueva empresa (no coincide con ninguna existente)',
+  'backup.postsTitle': 'Postulaciones con diferencias',
+  'backup.postsHint': 'También se detectaron postulaciones iguales (empresa, oferta, categoría, idioma y fecha) pero con campos internos distintos. Elegí cuál conservar para cada una.',
+  'backup.posts': 'Postulaciones',
+  'backup.postExisting': 'Conservar la de la cuenta',
+  'backup.postImported': 'Usar la del backup',
+  'backup.postFields': 'Campos con diferencias',
+  'backup.postTitle': 'Postulación {oferta}',
 
 // papelera
   'pap.ver': 'Papelera',

@@ -9,7 +9,7 @@
           <div class="flex items-center gap-2 px-3 py-2 cursor-pointer select-none" [style.background-color]="open().has(g.key) ? 'var(--surface-hover)' : 'transparent'" (click)="toggleOpen(g)">
             <span class="text-[0.7rem] shrink-0" style="opacity: 0.55;">{{ open().has(g.key) ? '▼' : '▶' }}</span>
             <span class="text-sm font-semibold flex-1 min-w-0 truncate">{{ g.nombre || g.key }}</span>
-            <span class="text-xs shrink-0" style="opacity: 0.45; white-space: nowrap;">{{ g.existing.count }} → {{ g.imported.count }}</span>
+            <span class="text-xs shrink-0" style="opacity: 0.45; white-space: nowrap;" [title]="i18n.t('backup.countHint')">{{ g.existing.count }} → {{ g.imported.count }}</span>
           </div>
           @if (open().has(g.key)) {
             <div class="animate-fade-in" style="border-top: 1px solid var(--border);">
@@ -36,18 +36,63 @@
               <!-- MENSAJE: solo si hay conflicto de mensaje -->
               @if (g.conflictMensaje) {
                 <div class="text-xs" style="border-top: 1px solid var(--border);">
-                  <div class="flex items-center gap-2 px-3 py-2 cursor-pointer select-none" [style.background-color]="openMsg().has(g.key) ? 'var(--surface-hover)' : 'transparent'" (click)="toggleMsg(g)">
-                    <span class="text-[0.7rem] shrink-0" style="opacity: 0.55;">{{ openMsg().has(g.key) ? '▼' : '▶' }}</span>
+                  <div class="flex items-center gap-2 px-3 py-2">
                     <span class="flex-1 font-medium">🏢 {{ i18n.t('backup.mensaje') }}</span>
-                    <span class="text-[0.65rem] shrink-0" style="opacity: 0.6;">{{ val(g, 'mensaje') === 'existing' ? i18n.t('backup.pillCuenta') : i18n.t('backup.pillBackup') }}</span>
                   </div>
-                  @if (openMsg().has(g.key)) {
-                    <div style="border-top: 1px solid var(--border);">
-                      <pre class="text-xs whitespace-pre-wrap font-sans leading-relaxed px-3 py-2" style="margin: 0;">{{ chosen(g, 'mensaje') || '—' }}</pre>
-                      <div class="flex gap-1 justify-end px-3 py-1.5" style="border-top: 1px solid var(--border);">
-                        <button type="button" class="view-pill text-xs" style="padding: 0.15rem 0.5rem;" [class.active]="val(g, 'mensaje') === 'existing'" (click)="pick(g, 'mensaje', 'existing')">✓ {{ i18n.t('backup.pillCuenta') }}</button>
-                        <button type="button" class="view-pill text-xs" style="padding: 0.15rem 0.5rem;" [class.active]="val(g, 'mensaje') === 'imported'" (click)="pick(g, 'mensaje', 'imported')">{{ i18n.t('backup.pillBackup') }}</button>
+                  <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 px-3 pb-2" style="border-top: 1px solid var(--border);">
+                    <!-- Opción Cuenta -->
+                    <div style="border: 1px solid var(--border); border-radius: 0.5rem; overflow: hidden;" [class.ring-1]="val(g, 'mensaje') === 'existing'" [style.outline]="val(g, 'mensaje') === 'existing' ? '1.5px solid var(--accent)' : 'none'">
+                      <div class="flex items-center justify-between gap-2 px-2 py-1.5" [style.background-color]="val(g, 'mensaje') === 'existing' ? 'var(--surface-hover)' : 'transparent'">
+                        <span class="text-[0.7rem] font-semibold truncate">{{ i18n.t('backup.pillCuenta') }}</span>
+                        <button type="button" class="view-pill text-xs shrink-0" style="padding: 0.15rem 0.5rem;" [class.active]="val(g, 'mensaje') === 'existing'" (click)="pick(g, 'mensaje', 'existing')">✓ {{ i18n.t('backup.useExisting') }}</button>
                       </div>
+                      <pre class="text-xs whitespace-pre-wrap font-sans leading-relaxed px-2 py-2 max-h-40 overflow-y-auto" style="margin: 0;">{{ g.existing.mensaje || '—' }}</pre>
+                    </div>
+                    <!-- Opción Backup -->
+                    <div style="border: 1px solid var(--border); border-radius: 0.5rem; overflow: hidden;" [style.outline]="val(g, 'mensaje') === 'imported' ? '1.5px solid var(--accent)' : 'none'">
+                      <div class="flex items-center justify-between gap-2 px-2 py-1.5" [style.background-color]="val(g, 'mensaje') === 'imported' ? 'var(--surface-hover)' : 'transparent'">
+                        <span class="text-[0.7rem] font-semibold truncate">{{ i18n.t('backup.pillBackup') }}</span>
+                        <button type="button" class="view-pill text-xs shrink-0" style="padding: 0.15rem 0.5rem;" [class.active]="val(g, 'mensaje') === 'imported'" (click)="pick(g, 'mensaje', 'imported')">✓ {{ i18n.t('backup.useImported') }}</button>
+                      </div>
+                      <pre class="text-xs whitespace-pre-wrap font-sans leading-relaxed px-2 py-2 max-h-40 overflow-y-auto" style="margin: 0;">{{ g.imported.mensaje || '—' }}</pre>
+                    </div>
+                  </div>
+                </div>
+              }
+            <!-- POSTULACIONES CON DIFERENCIAS -->
+              @if (g.postConflicts.length) {
+                <div class="text-xs" style="border-top: 1px solid var(--border);">
+                  <div class="flex items-center gap-2 px-3 py-2">
+                    <span class="flex-1 font-medium">📄 {{ i18n.t('backup.posts') }} ({{ g.postConflicts!.length }})</span>
+                  </div>
+                  @for (pc of g.postConflicts; track pc.key) {
+                    <div class="px-3 py-2" style="border-top: 1px solid var(--border);">
+                      <div class="flex items-center justify-between gap-2 cursor-pointer select-none" (click)="togglePostOpen(g, pc)">
+                        <span class="min-w-0 truncate font-medium" style="opacity: 0.8;">{{ i18n.t('backup.postTitle', { oferta: pc.oferta || '—' }) }}</span>
+                        <span class="shrink-0" style="opacity: 0.4;">{{ isPostOpen(g, pc) ? '▲' : '▼' }}</span>
+                      </div>
+                      <div class="flex gap-1 mt-1.5">
+                        <button type="button" class="view-pill text-xs" style="padding: 0.15rem 0.5rem;" [class.active]="postVal(g, pc) === 'existing'" (click)="pickPost(g, pc, 'existing')">✓ {{ i18n.t('backup.postExisting') }}</button>
+                        <button type="button" class="view-pill text-xs" style="padding: 0.15rem 0.5rem;" [class.active]="postVal(g, pc) === 'imported'" (click)="pickPost(g, pc, 'imported')">{{ i18n.t('backup.postImported') }}</button>
+                      </div>
+                      @if (isPostOpen(g, pc)) {
+                        <div class="mt-1.5" style="border: 1px solid var(--border); border-radius: 0.375rem; overflow: hidden;">
+                          <div class="flex items-center gap-1.5 px-2 py-1" style="opacity: 0.55;">
+                            <span class="truncate">{{ i18n.t('backup.postFields') }}:</span>
+                            <span class="truncate">{{ pc.fields.map(fieldLabel).join(' · ') }}</span>
+                          </div>
+                          <div class="grid grid-cols-2 gap-1.5 px-2 pb-2" style="border-top: 1px solid var(--border);">
+                            <div style="min-width: 0;">
+                              <div class="px-1 py-0.5 text-[0.65rem] font-semibold" style="opacity: 0.6;">{{ i18n.t('backup.pillCuenta') }}</div>
+                              <pre class="text-[11px] whitespace-pre-wrap font-sans leading-relaxed px-1.5 py-1 max-h-24 overflow-y-auto" style="margin: 0; background: var(--surface-hover); border-radius: 0.25rem;">{{ previewVals(pc, 'existing') }}</pre>
+                            </div>
+                            <div style="min-width: 0;">
+                              <div class="px-1 py-0.5 text-[0.65rem] font-semibold" style="opacity: 0.6;">{{ i18n.t('backup.pillBackup') }}</div>
+                              <pre class="text-[11px] whitespace-pre-wrap font-sans leading-relaxed px-1.5 py-1 max-h-24 overflow-y-auto" style="margin: 0; background: var(--surface-hover); border-radius: 0.25rem;">{{ previewVals(pc, 'imported') }}</pre>
+                            </div>
+                          </div>
+                        </div>
+                      }
                     </div>
                   }
                 </div>
