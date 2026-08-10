@@ -31,7 +31,7 @@ app.use(cors({ origin: allowedOrigins, credentials: true }));
 // Headers de seguridad HTTP. CSP desactivado: la app usa estilos inline de Angular.
 app.use(helmet({ contentSecurityPolicy: false }));
 
-app.use(express.json());
+app.use(express.json({ limit: '25mb' }));
 app.use(cookieParser());
 
 // Anti fuerza bruta SOLO sobre login y register. /me y /change-password quedan

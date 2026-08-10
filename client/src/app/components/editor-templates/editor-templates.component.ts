@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, effect, HostListener } from "@angular/core";
+import { Component, signal, effect, HostListener } from "@angular/core";
 import { FormsModule } from "@angular/forms";
 import { DropdownComponent } from "../dropdown/dropdown.component";
 import { ApiService } from "../../services/api.service";
@@ -12,179 +12,16 @@ import {
   Idioma,
 } from "../../models/interfaces";
 import { I18nService } from "../../services/i18n.service";
+import { bra as braUtil, stagger as staggerUtil } from "../../utils/utils";
+import { BackdropDismissDirective } from "../../directives/backdrop-dismiss.directive";
 
 @Component({
   selector: "app-editor-templates",
   standalone: true,
-  imports: [FormsModule, DropdownComponent],
-  template: `
-    <div class="sticky top-0 z-20 mb-4" style="background-color: var(--surface); border-bottom: 1px solid var(--border); padding-top: 1.25rem; padding-bottom: 0.75rem;">
-    <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
-      <app-dropdown
-        id="filtroCat"
-        class="sm:w-1/6 "
-        [selected]="filtroCat"
-        (selectedChange)="filtroCat = $event; loadTemplates()"
-        [options]="catFilterOpts()"
-        [placeholder]="i18n.t('tpl.filtroCat')"
-      />
-      <app-dropdown
-        id="filtroLang"
-        class="sm:w-1/6"
-        [selected]="filtroLang"
-        (selectedChange)="filtroLang = $event; loadTemplates()"
-        [options]="idiomaFilterOpts()"
-        [placeholder]="i18n.t('tpl.filtroLang')"
-      />
-      <button
-        class="btn btn-primary w-full sm:w-auto sm:ml-auto"
-        (click)="openModal()"
-      >
-        {{ i18n.t('tpl.nuevo') }}
-      </button>
-    </div>
-    </div>
-
-    @if (loading()) {
-      <div
-        class="card text-center py-12 flex items-center justify-center gap-2"
-        style="opacity: 0.5;"
-      >
-        <span class="loader"></span> {{ i18n.t('common.loading') }}
-      </div>
-    } @else if (templates().length === 0) {
-      <div class="card text-center py-12" style="opacity: 0.35;">
-        {{ i18n.t('tpl.sinTemplates') }}
-      </div>
-    }
-
-    <div class="space-y-1">
-      @for (t of templates(); track t.id; let i = $index) {
-        <div class="card flex items-center gap-3 animate-stagger" [style.animation-delay]="stagger(i)">
-          <div class="flex-1 min-w-0">
-            <div class="flex items-center gap-2 mb-0.5">
-              <span class="font-medium text-sm truncate">{{ t.nombre }}</span>
-              <span
-                class="badge text-[0.65rem]"
-                style="background: var(--accent); color: var(--accent-contrast, #fff);"
-                >{{ TIPO_ICONS[t.tipo] }} {{ tipoLabel(t.tipo) }}</span
-              >
-              <span
-                class="badge text-[0.65rem]"
-                style="background: var(--surface-hover);"
-                >{{ t.idioma }}</span
-              >
-            </div>
-            <p class="text-xs truncate" style="opacity: 0.4; max-width: 500px;">
-              {{ t.contenido.substring(0, 100) }}...
-            </p>
-          </div>
-          <div class="flex gap-1 shrink-0">
-            <button
-              class="btn btn-ghost btn-sm"
-              (click)="openModal(t)"
-              title="Editar"
-            >
-              ✏️
-            </button>
-            <button
-              class="btn btn-ghost btn-sm"
-              (click)="deleteTemplate(t.id)"
-              title="Eliminar"
-            >
-              🗑️
-            </button>
-          </div>
-        </div>
-      }
-    </div>
-
-    @if (modalOpen()) {
-      <div
-        class="fixed inset-0 z-50 flex items-start justify-center pt-[8vh]"
-        style="background: rgba(0,0,0,0.35);"
-      >
-        <div
-          class="card w-full max-w-2xl max-h-[85vh] overflow-y-auto mx-4 animate-fade-in"
-          (click)="$event.stopPropagation()"
-        >
-          <h3 class="text-base font-semibold mb-4">
-            {{ editingId() ? i18n.t('tpl.editarTitle') : i18n.t('tpl.nuevoTitle') }}
-          </h3>
-          <div class="space-y-3">
-            <input [(ngModel)]="formNombre" [placeholder]="i18n.t('tpl.nombrePlaceholder')" [style.border-color]="nombreError() ? '#ef4444' : ''" (ngModelChange)="nombreError.set('')" />
-            @if (nombreError()) { <span class="text-xs" style="color: #ef4444;">{{ nombreError() }}</span> }
-            <div class="grid grid-cols-1 sm:grid-cols-3 gap-3">
-              <app-dropdown
-                id="formCat"
-                [selected]="formCategoriaId"
-                (selectedChange)="formCategoriaId = $event"
-                [options]="catOpts()"
-                [placeholder]="i18n.t('tpl.categoria')"
-              />
-              <app-dropdown
-                id="formIdioma"
-                [selected]="formIdioma"
-                (selectedChange)="formIdioma = $event"
-                [options]="idiomaOpts()"
-                [placeholder]="i18n.t('tpl.idioma')"
-              />
-              <app-dropdown
-                id="formTipo"
-                [selected]="formTipo"
-                (selectedChange)="formTipo = $event"
-                [options]="tipoOpts()"
-                [placeholder]="i18n.t('tpl.tipo')"
-              />
-            </div>
-
-            <div>
-              <label class="text-xs mb-1 block" style="opacity: 0.45;"
-                >{{ i18n.t('tpl.chipHint') }}</label
-              >
-              <div class="flex flex-wrap gap-1 mb-2">
-                @for (ph of availablePlaceholders(); track ph) {
-                  <button
-                    class="badge text-[0.7rem] cursor-pointer border-0 transition-opacity"
-                    style="background: var(--surface-hover); color: var(--text);"
-                    (click)="insertPlaceholder(ph)"
-                  >
-                    {{ bra(ph) }}
-                  </button>
-                }
-              </div>
-              <textarea
-                #ta
-                [(ngModel)]="formContenido"
-                (ngModelChange)="updatePlaceholders(); contenidoError.set('')"
-                rows="9"
-                class="font-mono text-sm"
-                [style.border-color]="contenidoError() ? '#ef4444' : ''"
-                [placeholder]="i18n.t('tpl.contenidoPlaceholder')"
-              ></textarea>
-              @if (contenidoError()) { <span class="text-xs" style="color: #ef4444;">{{ contenidoError() }}</span> }
-            </div>
-
-            @if (detectedPlaceholders().length > 0) {
-              <div class="text-xs" style="opacity: 0.4;">
-                {{ i18n.t('tpl.placeholdersUsados') }} {{ joinPlaceholders() }}
-              </div>
-            }
-          </div>
-          <div class="flex justify-end gap-2 mt-5">
-            <button class="btn btn-outline" (click)="closeModal()">
-              {{ i18n.t('common.cancel') }}
-            </button>
-            <button class="btn btn-primary" (click)="saveTemplate()">
-              {{ editingId() ? i18n.t('common.save') : i18n.t('common.create') }}
-            </button>
-          </div>
-        </div>
-      </div>
-    }
-  `,
+  imports: [FormsModule, DropdownComponent, BackdropDismissDirective],
+  templateUrl: './editor-templates.component.html',
 })
-export class EditorTemplatesComponent implements OnInit {
+export class EditorTemplatesComponent {
   templates = signal<Template[]>([]);
   categorias: Categoria[] = [];
   idiomas: Idioma[] = [];
@@ -224,8 +61,6 @@ export class EditorTemplatesComponent implements OnInit {
     effect(() => { void shared.idiomasRefresh(); if (this.inited) this.reloadIdiomas(); });
     effect(() => { void shared.configRefresh(); if (this.inited) this.reloadConfigKeys(); });
   }
-
-  ngOnInit() {}
 
   @HostListener('document:keydown.escape')
   onEsc() {
@@ -360,13 +195,23 @@ export class EditorTemplatesComponent implements OnInit {
   }
 
   bra(ph: string) {
-    return "{" + ph + "}";
+    return braUtil(ph);
   }
 
   joinPlaceholders(): string {
     return this.detectedPlaceholders()
       .map((p) => this.bra(p))
       .join(", ");
+  }
+
+  filtroResumen(): string {
+    const parts: string[] = [];
+    if (this.filtroCat != null) {
+      const c = this.categorias.find(x => x.id === this.filtroCat);
+      if (c) parts.push(this.i18n.categoriaLabel(c.nombre));
+    }
+    if (this.filtroLang) parts.push(this.filtroLang);
+    return parts.join(' / ');
   }
 
   catFilterOpts() {
@@ -427,6 +272,6 @@ export class EditorTemplatesComponent implements OnInit {
   }
 
   stagger(i: number): string {
-    return `${Math.min(i * 30, 300)}ms`;
+    return staggerUtil(i);
   }
 }

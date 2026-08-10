@@ -1,12 +1,15 @@
-import { Component, OnInit, signal, ViewChild, ElementRef, effect, HostListener } from '@angular/core';
+import { Component, OnInit, signal, ViewChild, ElementRef, effect } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { DropdownComponent } from '../dropdown/dropdown.component';
+import { EmpresaModalComponent } from '../empresa-modal/empresa-modal.component';
 import { ApiService } from '../../services/api.service';
 import { ClipboardService } from '../../services/clipboard.service';
 import { DialogService } from '../../services/dialog.service';
 import { SharedStateService } from '../../services/shared-state.service';
 import { Categoria, Template, TIPO_ICONS, ESTADOS, Idioma, Tag, Empresa } from '../../models/interfaces';
 import { I18nService } from '../../services/i18n.service';
+import { labelFromKey as labelFromKeyUtil, stagger as staggerUtil } from '../../utils/utils';
+import { DEFAULT_ESTADO, TIPOS_TR } from '../../models/constants';
 
 interface SelectedTemplate {
   tipo: Template['tipo'];
@@ -16,172 +19,12 @@ interface SelectedTemplate {
 @Component({
   selector: 'app-nueva-postulacion',
   standalone: true,
-  imports: [FormsModule, DropdownComponent],
-  template: `
-    <div class="space-y-4">
-      @if (loading()) {
-        <div class="card text-center py-6 flex items-center justify-center gap-2" style="opacity: 0.5;">
-          <span class="loader"></span> {{ i18n.t('common.loading') }}
-        </div>
-      } @else {
-      <div class="space-y-4">
-        <div class="flex flex-col sm:flex-row items-stretch sm:items-end gap-2">
-          <div class="w-full sm:flex-1" style="max-width: 100%;">
-            <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('np.categoria') }}</label>
-            <app-dropdown
-              id="postCat"
-              [selected]="categoriaId"
-              (selectedChange)="categoriaId = $event; onCategoriaChange()"
-              [options]="catOpts()"
-              [placeholder]="i18n.t('common.select')"
-            />
-          </div>
-          <div class="w-full sm:flex-1" style="max-width: 100%;">
-            <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('np.idioma') }}</label>
-            <app-dropdown
-              id="postIdioma"
-              [selected]="idioma"
-              (selectedChange)="idioma = $event; onIdiomaChange()"
-              [options]="idiomaOpts()"
-              [placeholder]="i18n.t('common.select')"
-            />
-          </div>
-          <div class="hidden sm:block flex-1"></div>
-          @if (categoriaId && idioma) {
-            @for (tipo of tipos; track tipo) {
-              <label class="toggle-pill" [class.active]="isChecked(tipo)" (click)="toggleTipo(tipo)" style="margin-bottom: 1px;">
-                <span>{{ TIPO_ICONS[tipo] }}</span>
-                <span>{{ tipoLabel(tipo) }}</span>
-              </label>
-            }
-          }
-        </div>
-
-        @if (selected().length > 0) {
-          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
-            @for (sel of selected(); track sel.tipo) {
-              <div>
-                <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ TIPO_ICONS[sel.tipo] }} {{ tipoLabel(sel.tipo) }}</label>
-                <app-dropdown
-                  [id]="'tpl-' + sel.tipo"
-                  [selected]="sel.template"
-                  (selectedChange)="sel.template = $event; buildDynamicFields()"
-                  [options]="tplOpts(sel.tipo)"
-                  [placeholder]="i18n.t('common.select')"
-                />
-              </div>
-            }
-          </div>
-        }
-
-        @if (dynamicFields().length > 0) {
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2">
-            @for (field of dynamicFields(); track field.key) {
-              <div>
-                <label class="text-xs block mb-1" style="opacity: 0.5;">{{ labelFromKey(field.key) }}</label>
-                @if (field.key === 'empresa') {
-                  <div class="flex items-center gap-2">
-                    <div class="flex-1">
-                      <app-dropdown
-                        id="postEmpresa"
-                        [selected]="fieldValues()['empresa'] || ''"
-                        (selectedChange)="onEmpresaSelected($event)"
-                        [options]="empresaOpts()"
-                        [placeholder]="i18n.t('np.selectEmpresa')"
-                      />
-                    </div>
-                    <button class="btn btn-outline" style="flex-shrink: 0; padding: 0.4rem 0.75rem;" (click)="openEmpresaModal()" [title]="i18n.t('np.crearEmpresa')">＋</button>
-                  </div>
-                } @else {
-                  <input [ngModel]="fieldValues()[field.key] || ''" (ngModelChange)="setField(field.key, $event)" [placeholder]="labelFromKey(field.key)" [style.border-color]="fieldErrors().has(field.key) ? '#ef4444' : ''" />
-                }
-                @if (fieldErrors().has(field.key)) { <span class="text-xs" style="color: #ef4444;">{{ i18n.t('common.required') }}</span> }
-              </div>
-            }
-          </div>
-        }
-
-        @if (selected().length > 0 && dynamicFields().length > 0) {
-          <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2">
-            <div>
-              <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('np.estado') }}</label>
-              <app-dropdown
-                id="postEstado"
-                [selected]="estado"
-                (selectedChange)="estado = $event"
-                [options]="estadoOpts()"
-                [placeholder]="i18n.t('common.select')"
-              />
-            </div>
-            <div>
-              <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('np.linkEmpresa') }}</label>
-              <input [(ngModel)]="linkEmpresa" [placeholder]="i18n.t('np.linkEmpresaPh')" class="text-sm" />
-            </div>
-            <div>
-              <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('np.contactoEmpleado') }}</label>
-              <input [(ngModel)]="contactoEmpleado" [placeholder]="i18n.t('np.contactoEmpleadoPh')" class="text-sm" />
-            </div>
-            <div class="col-span-2">
-              <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('np.notas') }}</label>
-              <textarea [(ngModel)]="notas" rows="2" class="text-sm" style="resize: none;" [placeholder]="i18n.t('np.notasPh')"></textarea>
-            </div>
-          </div>
-        }
-
-        @if (selected().length > 0) {
-          <button class="btn btn-primary w-full" (click)="generar()">{{ i18n.t('np.generar') }}</button>
-        }
-      </div>
-
-      @if (resultados().length > 0) {
-        <div #resultadosSection class="space-y-1">
-          @for (res of resultados(); track res.tipo; let i = $index) {
-            <div class="animate-stagger" [style.animation-delay]="stagger(i)" style="border: 1px solid var(--border); border-radius: 0.5rem; overflow: hidden;">
-              <div class="flex items-center gap-3 px-4 py-2.5 cursor-pointer" [style.background-color]="expandedResult() === res.tipo ? 'var(--surface-hover)' : 'var(--surface)'" (click)="toggleResult(res.tipo)">
-                <span class="text-sm font-medium flex-1 truncate">{{ TIPO_ICONS[res.tipo] }} {{ tipoLabel(res.tipo) }} <span class="text-xs" style="opacity: 0.35; font-weight: 400;">— {{ previewText(res.texto) }}</span></span>
-                <span class="text-xs" style="opacity: 0.4;">{{ expandedResult() === res.tipo ? '▲' : '▼' }}</span>
-                <button class="btn btn-ghost btn-sm text-sm" (click)="clipboard.copy(res.texto); $event.stopPropagation()" [title]="i18n.t('hist.copy')">📋</button>
-              </div>
-              @if (expandedResult() === res.tipo) {
-                <div style="border-top: 1px solid var(--border);"><pre class="text-sm whitespace-pre-wrap font-sans leading-relaxed px-4 py-3" style="margin: 0;">{{ res.texto }}</pre></div>
-              }
-            </div>
-          }
-          <div class="flex gap-2 mt-3">
-            <button class="btn btn-primary flex-1" (click)="copiarTodo()">📋 {{ i18n.t('np.copiarTodo') }}</button>
-            <button class="btn btn-outline" (click)="guardarPostulacion()">💾 {{ i18n.t('np.guardar') }}</button>
-          </div>
-        </div>
-      }
-      }
-
-      <!-- CREAR EMPRESA MODAL -->
-      @if (empresaModalOpen()) {
-        <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[10vh]" style="background: rgba(0,0,0,0.3);">
-          <div class="card w-full max-w-sm mx-4 animate-fade-in" (click)="$event.stopPropagation()">
-            <h3 class="text-base font-semibold mb-4">{{ i18n.t('np.crearEmpresa') }}</h3>
-            <div class="space-y-3">
-              <div>
-                <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('np.empresaNombre') }}</label>
-                <input [(ngModel)]="empresaModalNombre" class="text-sm" [placeholder]="i18n.t('np.empresaNamePh')" />
-              </div>
-              <div>
-                <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('np.empresaLink') }}</label>
-                <input [(ngModel)]="empresaModalLink" class="text-sm" [placeholder]="i18n.t('np.empresaLinkPh')" />
-              </div>
-            </div>
-            <div class="flex justify-end gap-2 mt-5">
-              <button class="btn btn-outline" (click)="closeEmpresaModal()">{{ i18n.t('common.cancel') }}</button>
-              <button class="btn btn-primary" (click)="crearEmpresa()">{{ i18n.t('common.create') }}</button>
-            </div>
-          </div>
-        </div>
-      }
-    </div>
-  `,
+  imports: [FormsModule, DropdownComponent, EmpresaModalComponent],
+  templateUrl: './nueva-postulacion.component.html',
 })
 export class NuevaPostulacionComponent implements OnInit {
   @ViewChild('resultadosSection') resultadosSection!: ElementRef;
+  @ViewChild('empresaModal') empresaModal!: EmpresaModalComponent;
   categorias: Categoria[] = [];
   idiomas: Idioma[] = [];
   // Orden visual de los tipos de mensaje en los toggle-pill.
@@ -199,7 +42,7 @@ export class NuevaPostulacionComponent implements OnInit {
   allTemplates = signal<Template[]>([]);
   loading = signal(false);
   notas = '';
-  estado = 'solicitado';
+estado = DEFAULT_ESTADO;
   linkEmpresa = '';
   contactoEmpleado = '';
   estados: { value: string; label: string }[] = ESTADOS.map(e => ({ value: e.value, label: e.label }));
@@ -209,9 +52,6 @@ export class NuevaPostulacionComponent implements OnInit {
   empresas = signal<Empresa[]>([]);
   selectedEmpresaId: number | null = null;
   empresaLinkOriginal = '';
-  empresaModalOpen = signal(false);
-  empresaModalNombre = '';
-  empresaModalLink = '';
 
   private inited = false;
   private templatesInitialized = false;
@@ -268,18 +108,11 @@ export class NuevaPostulacionComponent implements OnInit {
     }
   }
 
-  openEmpresaModal() { this.empresaModalNombre = ''; this.empresaModalLink = ''; this.empresaModalOpen.set(true); }
-  closeEmpresaModal() { this.empresaModalOpen.set(false); }
+  openEmpresaModal() { this.empresaModal.abrir(); }
 
-  @HostListener('document:keydown.escape')
-  onEsc() {
-    if (this.empresaModalOpen()) this.closeEmpresaModal();
-  }
-
-  crearEmpresa() {
-    const nombre = this.empresaModalNombre.trim();
-    if (!nombre) { this.dialog.toast(this.i18n.t('common.required')); return; }
-    const link = this.empresaModalLink.trim();
+crearEmpresa(data: { nombre: string; link: string }) {
+    const nombre = data.nombre.trim();
+    const link = data.link.trim();
     this.api.createEmpresa({ nombre, link }).subscribe({
       next: (e) => {
         this.empresas.update(list => [...list, e].sort((a, b) => a.nombre.localeCompare(b.nombre)));
@@ -288,11 +121,11 @@ export class NuevaPostulacionComponent implements OnInit {
         this.empresaLinkOriginal = e.link;
         this.linkEmpresa = e.link;
         this.setField('empresa', e.nombre);
-        this.closeEmpresaModal();
+        this.empresaModal.cerrar();
       },
       error: (err: any) => {
-        if (err?.error?.error === 'EMPRESA_EXISTE') this.dialog.toast(this.i18n.t('np.empresaExiste'));
-        else this.dialog.toast(this.i18n.t('common.error.save'));
+        if (err?.error?.error === 'EMPRESA_EXISTE') this.dialog.toast(this.i18n.t('np.empresaExiste'), 'error');
+        else this.dialog.toast(this.i18n.t('common.error.save'), 'error');
       },
     });
   }
@@ -327,7 +160,7 @@ export class NuevaPostulacionComponent implements OnInit {
         const added = newNames.filter(x => !prev.includes(x));
         const removed = prev.filter(x => !newNames.includes(x));
         if (removed.length === 1 && added.length === 1 && removed[0] === this.estado) this.estado = added[0];
-        else this.estado = newNames.includes('solicitado') ? 'solicitado' : (newNames[0] ?? '');
+        else this.estado = newNames.includes(DEFAULT_ESTADO) ? DEFAULT_ESTADO : (newNames[0] ?? '');
       }
       onDone?.();
     });
@@ -400,10 +233,10 @@ export class NuevaPostulacionComponent implements OnInit {
   }
 
   labelFromKey(key: string) {
-    return key.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
+    return labelFromKeyUtil(key);
   }
 
-  tipoLabel(tipo: Template['tipo']) { return this.i18n.t(`tipo.${tipo}` as any); }
+  tipoLabel(tipo: Template['tipo']) { return this.i18n.t(TIPOS_TR[tipo]); }
 
   toggleResult(tipo: Template['tipo']) { this.expandedResult.update(v => v === tipo ? null : tipo); }
 
@@ -516,18 +349,18 @@ export class NuevaPostulacionComponent implements OnInit {
         this.resultados.set([]);
         this.expandedResult.set(null);
         this.notas = '';
-        this.estado = 'solicitado';
+        this.estado = DEFAULT_ESTADO;
         this.linkEmpresa = '';
         this.contactoEmpleado = '';
         this.selectedEmpresaId = null;
         this.empresaLinkOriginal = '';
         window.scrollTo({ top: 0, behavior: 'smooth' });
       },
-      error: () => this.dialog.toast(this.i18n.t('np.saveError')),
+      error: () => this.dialog.toast(this.i18n.t('np.saveError'), 'error'),
     });
   }
 
   stagger(i: number): string {
-    return `${Math.min(i * 30, 300)}ms`;
+    return staggerUtil(i);
   }
 }

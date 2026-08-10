@@ -3,6 +3,7 @@ import { Injectable, signal } from '@angular/core';
 export interface DialogState {
   open: boolean;
   type: 'confirm' | 'toast';
+  kind?: 'info' | 'error';
   message: string;
   resolve?: (value: boolean) => void;
 }
@@ -17,8 +18,8 @@ export class DialogService {
     });
   }
 
-  toast(message: string) {
-    this.state.set({ open: true, type: 'toast', message });
+  toast(message: string, kind: 'info' | 'error' = 'info') {
+    this.state.set({ open: true, type: 'toast', kind, message });
     setTimeout(() => this.state.set({ open: false, type: 'confirm', message: '' }), 2500);
   }
 }

@@ -1,0 +1,72 @@
+<div class="fixed inset-0 z-[100] flex items-start justify-center pt-[6vh]" style="background: rgba(0,0,0,0.35);" backdropDismiss (dismissed)="cancelar.emit()">
+  <div class="card w-full max-w-lg mx-4 animate-fade-in max-h-[84vh] flex flex-col" (click)="$event.stopPropagation()">
+    <h3 class="text-base font-semibold mb-1">{{ i18n.t('backup.importMergeTitle') }}</h3>
+    <p class="text-sm mb-4" style="opacity: 0.55;">{{ i18n.t('backup.importMergeHint') }}</p>
+
+    <div class="overflow-y-auto pr-1 space-y-2 flex-1">
+      @for (g of conflictos(); track g.key) {
+        <div style="border: 1px solid var(--border); border-radius: 0.5rem; overflow: hidden;">
+          <div class="flex items-center gap-2 px-3 py-2 cursor-pointer select-none" [style.background-color]="open().has(g.key) ? 'var(--surface-hover)' : 'transparent'" (click)="toggleOpen(g)">
+            <span class="text-[0.7rem] shrink-0" style="opacity: 0.55;">{{ open().has(g.key) ? '▼' : '▶' }}</span>
+            <span class="text-sm font-semibold flex-1 min-w-0 truncate">{{ g.nombre || g.key }}</span>
+            <span class="text-xs shrink-0" style="opacity: 0.45; white-space: nowrap;">{{ g.existing.count }} → {{ g.imported.count }}</span>
+          </div>
+          @if (open().has(g.key)) {
+            <div class="animate-fade-in" style="border-top: 1px solid var(--border);">
+              <!-- LINK: solo si hay conflicto de link -->
+              @if (g.conflictLink) {
+                <div class="px-3 py-2">
+                  <div class="flex items-center justify-between gap-2">
+                    <span class="text-xs font-medium" style="opacity: 0.55;">{{ i18n.t('backup.link') }}</span>
+                    <div class="flex gap-1 shrink-0">
+                      <button type="button" class="view-pill text-xs" [style.padding]="'0.15rem 0.5rem'" [class.active]="val(g, 'link') === 'existing'" (click)="pick(g, 'link', 'existing')">✓ {{ i18n.t('backup.pillCuenta') }}</button>
+                      <button type="button" class="view-pill text-xs" style="padding: 0.15rem 0.5rem;" [class.active]="val(g, 'link') === 'imported'" (click)="pick(g, 'link', 'imported')">{{ i18n.t('backup.pillBackup') }}</button>
+                    </div>
+                  </div>
+                  <div class="flex items-center gap-1.5 mt-1 text-xs">
+                    <span class="shrink-0" style="opacity: 0.55;">🔗</span>
+                    @if (chosen(g, 'link')) {
+                      <a [href]="chosen(g, 'link')!" target="_blank" rel="noopener" class="no-underline truncate" style="color: var(--accent);" [title]="chosen(g, 'link')!">{{ chosen(g, 'link') }}</a>
+                    } @else {
+                      <span style="opacity: 0.35;">—</span>
+                    }
+                  </div>
+                </div>
+              }
+              <!-- MENSAJE: solo si hay conflicto de mensaje -->
+              @if (g.conflictMensaje) {
+                <div class="text-xs" style="border-top: 1px solid var(--border);">
+                  <div class="flex items-center gap-2 px-3 py-2 cursor-pointer select-none" [style.background-color]="openMsg().has(g.key) ? 'var(--surface-hover)' : 'transparent'" (click)="toggleMsg(g)">
+                    <span class="text-[0.7rem] shrink-0" style="opacity: 0.55;">{{ openMsg().has(g.key) ? '▼' : '▶' }}</span>
+                    <span class="flex-1 font-medium">🏢 {{ i18n.t('backup.mensaje') }}</span>
+                    <span class="text-[0.65rem] shrink-0" style="opacity: 0.6;">{{ val(g, 'mensaje') === 'existing' ? i18n.t('backup.pillCuenta') : i18n.t('backup.pillBackup') }}</span>
+                  </div>
+                  @if (openMsg().has(g.key)) {
+                    <div style="border-top: 1px solid var(--border);">
+                      <pre class="text-xs whitespace-pre-wrap font-sans leading-relaxed px-3 py-2" style="margin: 0;">{{ chosen(g, 'mensaje') || '—' }}</pre>
+                      <div class="flex gap-1 justify-end px-3 py-1.5" style="border-top: 1px solid var(--border);">
+                        <button type="button" class="view-pill text-xs" style="padding: 0.15rem 0.5rem;" [class.active]="val(g, 'mensaje') === 'existing'" (click)="pick(g, 'mensaje', 'existing')">✓ {{ i18n.t('backup.pillCuenta') }}</button>
+                        <button type="button" class="view-pill text-xs" style="padding: 0.15rem 0.5rem;" [class.active]="val(g, 'mensaje') === 'imported'" (click)="pick(g, 'mensaje', 'imported')">{{ i18n.t('backup.pillBackup') }}</button>
+                      </div>
+                    </div>
+                  }
+                </div>
+              }
+            </div>
+          }
+        </div>
+      }
+    </div>
+
+    <div class="flex justify-end gap-2 mt-5">
+      <button class="btn btn-outline" [disabled]="busy()" (click)="cancelar.emit()">{{ i18n.t('common.cancel') }}</button>
+      <button class="btn btn-primary" [disabled]="busy()" (click)="confirmar.emit(choices())">
+        @if (busy()) {
+          <span class="loader" style="border-top-color: var(--accent-contrast, #fff);"></span>
+        } @else {
+          {{ i18n.t('backup.import') }}
+        }
+      </button>
+    </div>
+  </div>
+</div>

@@ -144,7 +144,10 @@ export class ApiService {
   exportBackup(): Observable<any> {
     return this.http.get(`${this.base}/backup/export`, { responseType: 'json' });
   }
-  importBackup(data: any): Observable<any> {
-    return this.http.post(`${this.base}/backup/import`, { data });
+  importPreview(data: any): Observable<any> {
+    return this.http.post(`${this.base}/backup/preview`, { data });
+  }
+  importBackup(data: any, decisions: Record<string, { link: 'existing' | 'imported'; mensaje: 'existing' | 'imported' }>): Observable<any> {
+    return this.http.post(`${this.base}/backup/import`, { data, decisions });
   }
 }
