@@ -2,8 +2,11 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 
-const DATA_DIR = path.join(__dirname, '..', 'data');
-if (!fs.existsSync(DATA_DIR)) {
+// `__dirname` no existe bajo Vitest (ESM); se usa el cwd solo como respaldo de tests.
+// Cuando POSTULATOOL_DB está seteada (tests/CI) no se toca el disco.
+const _dir = typeof __dirname !== 'undefined' ? __dirname : process.cwd();
+const DATA_DIR = path.join(_dir, '..', 'data');
+if (!process.env.POSTULATOOL_DB && !fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 

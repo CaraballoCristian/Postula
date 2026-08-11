@@ -124,19 +124,21 @@ export default function crudFactory(opts: CrudOptions): Router {
 
     let affectedPostulaciones = 0;
     try {
-      const apply = () =>
-        db.prepare(`UPDATE ${table} SET ${setCols.join(', ')} WHERE id = ? AND user_id = ?`).run(...setValues, req.params.id, userId);
-
       if (opts.propagateOnRename && renamed && body.propagate === true) {
         db.transaction(() => {
-          apply();
-          affectedPostulaciones = db.prepare(
-            `UPDATE ${opts.propagateOnRename!.table} SET ${opts.propagateOnRename!.column} = ?
+          // La FK ON UPDATE CASCADE renombra las postulaciones al cambiar el tag;
+          // contamos las referencias ANTES para reportar el número real afectado.
+          const ref = db.prepare(
+            `SELECT COUNT(*) AS n FROM ${opts.propagateOnRename!.table}
              WHERE ${opts.propagateOnRename!.column} = ? AND user_id = ?`
-          ).run(newNombre, existing.nombre, userId).changes;
+          ).get(existing.nombre, userId) as any;
+          affectedPostulaciones = ref?.n ?? 0;
+          db.prepare(`UPDATE ${table} SET ${setCols.join(', ')} WHERE id = ? AND user_id = ?`)
+            .run(...setValues, req.params.id, userId);
         })();
       } else {
-        apply();
+        db.prepare(`UPDATE ${table} SET ${setCols.join(', ')} WHERE id = ? AND user_id = ?`)
+          .run(...setValues, req.params.id, userId);
       }
 
       const row = db.prepare(`SELECT * FROM ${table} WHERE id = ?`).get(req.params.id) as any;
@@ -174,7 +176,17 @@ export default function crudFactory(opts: CrudOptions): Router {
       return;
     }
 
-    const result = db.prepare(`DELETE FROM ${table} WHERE id = ? AND user_id = ?`).run(req.params.id, userId);
+    let result;
+    try {
+      result = db.prepare(`DELETE FROM ${table} WHERE id = ? AND user_id = ?`).run(req.params.id, userId);
+    } catch (e: any) {
+      // La FK de postulaciones (RESTRICT) impide borrar una fila referenciada.
+      if (e.message?.includes('FOREIGN KEY')) {
+        res.status(400).json({ error: 'No se puede borrar porque está en uso. Reasigná primero.' });
+        return;
+      }
+      throw e;
+    }
     if ((opts.notFoundOnDelete ?? true) && result.changes === 0) { res.status(404).json({ error: notFound }); return; }
     res.json({ ok: true });
   });
