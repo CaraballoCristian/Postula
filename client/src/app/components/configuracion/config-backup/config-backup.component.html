@@ -1,0 +1,13 @@
+<div>
+      <p class="text-sm mb-4" style="opacity: 0.55;">{{ i18n.t('backup.intro') }}</p>
+
+      <div class="flex flex-col sm:flex-row gap-2">
+        <button class="btn btn-primary" (click)="exportBackup()">⬇️ {{ i18n.t('backup.export') }}</button>
+        <button class="btn btn-outline" (click)="fileInput.click()">⬆️ {{ i18n.t('backup.import') }}</button>
+        <input #fileInput type="file" accept="application/json,.json" style="display:none;" (change)="onFileSelected($event)" />
+      </div>
+    </div>
+
+    @if (importReview()) {
+      <app-import-conflict [groups]="importReview()!.groups" [busy]="importBusy()" (confirmar)="confirmImport($event)" (cancelar)="cancelImport()" />
+    }

@@ -1,0 +1,47 @@
+<div>
+      <div class="flex justify-end mb-4">
+        <button class="btn btn-primary w-full sm:w-auto" (click)="openCatModal()">{{ i18n.t('cfg.nuevaCategoria') }}</button>
+      </div>
+      @if (loading()) {
+        <div class="card text-center py-12 flex items-center justify-center gap-2" style="opacity: 0.5;"><span class="loader"></span> {{ i18n.t('common.loading') }}</div>
+      } @else {
+        @for (c of categorias(); track c.id; let i = $index) {
+          <div class="card flex items-center gap-3 flex-wrap animate-stagger" [style.animation-delay]="stagger(i)">
+            <span class="text-sm flex-1 min-w-0 truncate">{{ i18n.categoriaLabel(c.nombre) }}</span>
+            <span class="text-xs shrink-0" style="opacity: 0.35; white-space: nowrap;">{{ catRefCount(c.id) }} {{ i18n.t('cfg.refs') }}</span>
+            <button class="btn btn-ghost btn-sm text-sm" (click)="setDefaultCategoria(c.id)" [style.opacity]="defaultCategoriaId === c.id ? '1' : '0.3'" [title]="i18n.t('cfg.setDefault')">⭐</button>
+            <button class="btn btn-ghost btn-sm" (click)="openCatModal(c)" [title]="i18n.t('common.edit')">✏️</button>
+            <button class="btn btn-ghost btn-sm" (click)="removeCategoria(c.id)" [title]="i18n.t('common.delete')">🗑️</button>
+          </div>
+        }
+      }
+    </div>
+
+    @if (modalCat()) {
+      <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]" style="background: rgba(0,0,0,0.35);" backdropDismiss (dismissed)="onEsc()">
+        <div class="card w-full max-w-sm mx-4 animate-fade-in" (click)="$event.stopPropagation()">
+          <h3 class="text-base font-semibold mb-4">{{ editCatId() ? i18n.t('cfg.categoria.editar') : i18n.t('cfg.categoria.nueva') }}</h3>
+          <input [(ngModel)]="formCatNombre" class="text-sm" [placeholder]="i18n.t('cfg.nombre')" [style.border-color]="catNombreError() ? 'var(--error-color)' : ''" (ngModelChange)="catNombreError.set('')" />@if (catNombreError()) { <div class="text-xs mt-1" style="color: var(--error-color);">{{ catNombreError() }}</div> }
+          <div class="flex justify-end gap-2 mt-5">
+            <button class="btn btn-outline" (click)="closeModals()">{{ i18n.t('common.cancel') }}</button>
+            <button class="btn btn-primary" (click)="saveCategoria()">{{ editCatId() ? i18n.t('common.save') : i18n.t('common.create') }}</button>
+          </div>
+        </div>
+      </div>
+    }
+
+    @if (reassignModal()) {
+      <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]" style="background: rgba(0,0,0,0.35);" backdropDismiss (dismissed)="onEsc()">
+        <div class="card w-full max-w-sm mx-4 animate-fade-in" (click)="$event.stopPropagation()">
+          <h3 class="text-base font-semibold mb-2">{{ i18n.t('cfg.deleteCatTitle') }}</h3>
+          <p class="text-sm mb-4" style="opacity: 0.7;">{{ i18n.t('cfg.deleteCatMsg', { cat: i18n.categoriaLabel(pendingDeleteName()), count: pendingDeleteCount }) }}</p>
+          <select [(ngModel)]="reassignDestId" class="text-sm">
+            @for (o of destOptions(); track o.id) { <option [ngValue]="o.id">{{ o.label }}</option> }
+          </select>
+          <div class="flex justify-end gap-2 mt-5">
+            <button class="btn btn-outline" (click)="cancelReassign()">{{ i18n.t('common.cancel') }}</button>
+            <button class="btn btn-primary" (click)="confirmReassign()">{{ i18n.t('cfg.deleteAndReassign') }}</button>
+          </div>
+        </div>
+      </div>
+    }

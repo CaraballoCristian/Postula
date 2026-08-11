@@ -1,0 +1,30 @@
+<div class="max-w-sm">
+      <p class="text-sm mb-4" style="opacity: 0.55;">{{ i18n.t('auth.changePasswordHint') }}</p>
+      <form (ngSubmit)="changePassword()" class="flex flex-col gap-3">
+        <label class="flex flex-col gap-1">
+          <span class="text-sm" style="opacity: 0.6;">{{ i18n.t('auth.currentPassword') }}</span>
+          <app-password-field [value]="formCurrentPassword" (valueChange)="formCurrentPassword = $event" name="currentPassword" autocomplete="current-password" />
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-sm" style="opacity: 0.6;">{{ i18n.t('auth.newPassword') }}</span>
+          <app-password-field [value]="formNewPassword" (valueChange)="formNewPassword = $event" name="newPassword" autocomplete="new-password" />
+        </label>
+        <label class="flex flex-col gap-1">
+          <span class="text-sm" style="opacity: 0.6;">{{ i18n.t('auth.confirmPassword') }}</span>
+          <app-password-field [value]="formConfirmPassword" (valueChange)="formConfirmPassword = $event" name="confirmNewPassword" autocomplete="new-password" />
+        </label>
+        <p class="text-xs" style="opacity: 0.5;">{{ i18n.t('auth.passwordHint') }}</p>
+
+        @if (pwMsg()) {
+          <p class="text-sm" [style.color]="pwOk() ? '#16a34a' : 'var(--error-color)'">{{ pwMsg() }}</p>
+        }
+
+        <button type="submit" class="btn btn-primary w-full" [disabled]="pwLoading()">
+          @if (pwLoading()) {
+            <span class="loader" style="border-top-color: var(--accent-contrast, #fff);"></span>
+          } @else {
+            {{ i18n.t('auth.changePassword') }}
+          }
+        </button>
+      </form>
+    </div>

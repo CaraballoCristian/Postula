@@ -1,4 +1,4 @@
-    <div>
+<div>
       <nav class="flex overflow-x-auto border-b mb-5" style="border-color: var(--border);">
         @for (s of sections; track s.id) {
           <button class="relative px-2 sm:px-3 py-2 text-sm font-medium cursor-pointer select-none bg-transparent border-0 rounded-none transition-colors whitespace-nowrap"
@@ -13,243 +13,24 @@
         }
       </nav>
 
-      <!-- DATOS PERSONALES -->
-      @if (activeSection() === 'datos') {
-        <div>
-          <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-2 mb-4">
-            <p class="text-sm" style="opacity: 0.55;">{{ i18n.t('cfg.intro') }}</p>
-            <button class="btn btn-primary w-full sm:w-auto" (click)="openDatosModal()">{{ i18n.t('cfg.nuevaVariable') }}</button>
-          </div>
-          @if (loading()) {
-            <div class="card text-center py-12 flex items-center justify-center gap-2" style="opacity: 0.5;"><span class="loader"></span> {{ i18n.t('common.loading') }}</div>
-          } @else {
-            @for (e of userEntries(); track e.id; let i = $index) {
-              <div class="card flex items-center gap-3 animate-stagger" [style.animation-delay]="stagger(i)">
-                <span class="text-sm font-mono shrink-0" style="min-width: 120px;">{{ e.clave }}</span>
-                <span class="text-sm flex-1 truncate" style="opacity: 0.6;">{{ e.valor || '—' }}</span>
-                <span class="text-xs shrink-0" style="opacity: 0.35; white-space: nowrap;">{{ refCount(e.clave) }} {{ i18n.t('cfg.refs') }}</span>
-                <button class="btn btn-ghost btn-sm" (click)="openDatosModal(e)" [title]="i18n.t('common.edit')">✏️</button>
-                <button class="btn btn-ghost btn-sm" (click)="removeDato(e.id)" [title]="i18n.t('common.delete')">🗑️</button>
-              </div>
-            }
-          }
-        </div>
-      }
-
-      <!-- CATEGORÍAS -->
-      @if (activeSection() === 'categorias') {
-        <div>
-          <div class="flex justify-end mb-4">
-            <button class="btn btn-primary w-full sm:w-auto" (click)="openCatModal()">{{ i18n.t('cfg.nuevaCategoria') }}</button>
-          </div>
-          @if (loading()) {
-            <div class="card text-center py-12 flex items-center justify-center gap-2" style="opacity: 0.5;"><span class="loader"></span> {{ i18n.t('common.loading') }}</div>
-          } @else {
-            @for (c of categorias(); track c.id; let i = $index) {
-              <div class="card flex items-center gap-3 flex-wrap animate-stagger" [style.animation-delay]="stagger(i)">
-                <span class="text-sm flex-1 min-w-0 truncate">{{ i18n.categoriaLabel(c.nombre) }}</span>
-                <span class="text-xs shrink-0" style="opacity: 0.35; white-space: nowrap;">{{ catRefCount(c.id) }} {{ i18n.t('cfg.refs') }}</span>
-                <button class="btn btn-ghost btn-sm text-sm" (click)="setDefaultCategoria(c.id)" [style.opacity]="defaultCategoriaId === c.id ? '1' : '0.3'" [title]="i18n.t('cfg.setDefault')">⭐</button>
-                <button class="btn btn-ghost btn-sm" (click)="openCatModal(c)" [title]="i18n.t('common.edit')">✏️</button>
-                <button class="btn btn-ghost btn-sm" (click)="removeCategoria(c.id)" [title]="i18n.t('common.delete')">🗑️</button>
-              </div>
-            }
-          }
-        </div>
-      }
-
-      <!-- IDIOMAS -->
-      @if (activeSection() === 'idiomas') {
-        <div>
-          <div class="flex justify-end mb-4">
-            <button class="btn btn-primary w-full sm:w-auto" (click)="openIdiomaModal()">{{ i18n.t('cfg.nuevoIdioma') }}</button>
-          </div>
-          @if (loading()) {
-            <div class="card text-center py-12 flex items-center justify-center gap-2" style="opacity: 0.5;"><span class="loader"></span> {{ i18n.t('common.loading') }}</div>
-          } @else {
-            @for (i of idiomas(); track i.id; let idx = $index) {
-              <div class="card flex items-center gap-3 flex-wrap animate-stagger" [style.animation-delay]="stagger(idx)">
-                <span class="text-sm flex-1 min-w-0 truncate">{{ i.nombre }}</span>
-                <span class="text-xs shrink-0" style="opacity: 0.35; white-space: nowrap;">{{ idiomaRefCount(i.nombre) }} {{ i18n.t('cfg.refs') }}</span>
-                <button class="btn btn-ghost btn-sm text-sm" (click)="setDefaultIdioma(i.id)" [style.opacity]="defaultIdiomaNombre === i.nombre ? '1' : '0.3'" [title]="i18n.t('cfg.setDefault')">⭐</button>
-                <button class="btn btn-ghost btn-sm" (click)="openIdiomaModal(i)" [title]="i18n.t('common.edit')">✏️</button>
-                <button class="btn btn-ghost btn-sm" (click)="removeIdioma(i.id)" [title]="i18n.t('common.delete')">🗑️</button>
-              </div>
-            }
-          }
-        </div>
-      }
-
-      <!-- TAGS -->
-      @if (activeSection() === 'tags') {
-        <div>
-          <div class="flex justify-end mb-4">
-            <button class="btn btn-primary w-full sm:w-auto" (click)="openTagModal()">{{ i18n.t('cfg.nuevoTag') }}</button>
-          </div>
-          @if (loading()) {
-            <div class="card text-center py-12 flex items-center justify-center gap-2" style="opacity: 0.5;"><span class="loader"></span> {{ i18n.t('common.loading') }}</div>
-          } @else {
-            @for (t of tags(); track t.id; let i = $index) {
-              <div class="card flex items-center gap-3 flex-wrap animate-stagger" [style.animation-delay]="stagger(i)">
-                <span class="w-3 h-3 rounded-full shrink-0" [style.background-color]="t.color"></span>
-                <span class="text-sm flex-1 min-w-0 truncate">{{ i18n.tagLabel(t.nombre) }}</span>
-                <button class="btn btn-ghost btn-sm" (click)="openTagModal(t)" [title]="i18n.t('common.edit')">✏️</button>
-                <button class="btn btn-ghost btn-sm" (click)="removeTag(t.id)" [title]="i18n.t('common.delete')">🗑️</button>
-              </div>
-            }
-          }
-        </div>
-      }
-
-      <!-- BACKUP -->
-      @if (activeSection() === 'backup') {
-        <div>
-          <p class="text-sm mb-4" style="opacity: 0.55;">{{ i18n.t('backup.intro') }}</p>
-          <div class="flex flex-col sm:flex-row gap-2">
-            <button class="btn btn-primary" (click)="exportBackup()">⬇️ {{ i18n.t('backup.export') }}</button>
-            <button class="btn btn-outline" (click)="fileInput.click()">⬆️ {{ i18n.t('backup.import') }}</button>
-            <input #fileInput type="file" accept="application/json,.json" style="display:none;" (change)="onFileSelected($event)" />
-          </div>
-        </div>
-      }
-
-      <!-- CAMBIAR CONTRASEÑA -->
-      @if (activeSection() === 'seguridad') {
-        <div class="max-w-sm">
-          <p class="text-sm mb-4" style="opacity: 0.55;">{{ i18n.t('auth.changePasswordHint') }}</p>
-          <form (ngSubmit)="changePassword()" class="flex flex-col gap-3">
-            <label class="flex flex-col gap-1">
-              <span class="text-sm" style="opacity: 0.6;">{{ i18n.t('auth.currentPassword') }}</span>
-              <app-password-field [value]="formCurrentPassword" (valueChange)="formCurrentPassword = $event" name="currentPassword" autocomplete="current-password" />
-            </label>
-            <label class="flex flex-col gap-1">
-              <span class="text-sm" style="opacity: 0.6;">{{ i18n.t('auth.newPassword') }}</span>
-              <app-password-field [value]="formNewPassword" (valueChange)="formNewPassword = $event" name="newPassword" autocomplete="new-password" />
-            </label>
-            <label class="flex flex-col gap-1">
-              <span class="text-sm" style="opacity: 0.6;">{{ i18n.t('auth.confirmPassword') }}</span>
-              <app-password-field [value]="formConfirmPassword" (valueChange)="formConfirmPassword = $event" name="confirmNewPassword" autocomplete="new-password" />
-            </label>
-            <p class="text-xs" style="opacity: 0.5;">{{ i18n.t('auth.passwordHint') }}</p>
-
-            @if (pwMsg()) {
-              <p class="text-sm" [style.color]="pwOk() ? '#16a34a' : 'var(--error-color)'">{{ pwMsg() }}</p>
-            }
-
-            <button type="submit" class="btn btn-primary w-full" [disabled]="pwLoading()">
-              @if (pwLoading()) {
-                <span class="loader" style="border-top-color: var(--accent-contrast, #fff);"></span>
-              } @else {
-                {{ i18n.t('auth.changePassword') }}
-              }
-            </button>
-          </form>
-        </div>
+      @switch (activeSection()) {
+        @case ('datos') {
+          <app-config-datos />
+        }
+        @case ('categorias') {
+          <app-config-categorias />
+        }
+        @case ('idiomas') {
+          <app-config-idiomas />
+        }
+        @case ('tags') {
+          <app-config-tags />
+        }
+        @case ('backup') {
+          <app-config-backup />
+        }
+        @case ('seguridad') {
+          <app-config-seguridad />
+        }
       }
     </div>
-
-    <!-- DATOS MODAL -->
-    @if (modalDatos()) {
-      <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]" style="background: rgba(0,0,0,0.35);" backdropDismiss (dismissed)="onEsc()">
-        <div class="card w-full max-w-sm mx-4 animate-fade-in" (click)="$event.stopPropagation()">
-          <h3 class="text-base font-semibold mb-4">{{ editDatoId() ? i18n.t('cfg.dato.editar') : i18n.t('cfg.dato.nueva') }}</h3>
-          <div class="space-y-3">
-            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('cfg.clave') }}</label><input [(ngModel)]="formDatoClave" class="text-sm font-mono" [style.border-color]="claveError() ? 'var(--error-color)' : ''" (ngModelChange)="claveError.set('')" />@if (claveError()) { <div class="text-xs mt-1" style="color: var(--error-color);">{{ claveError() }}</div> }</div>
-            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('cfg.valor') }}</label><input [(ngModel)]="formDatoValor" class="text-sm" /></div>
-          </div>
-          <div class="flex justify-end gap-2 mt-5">
-            <button class="btn btn-outline" (click)="closeModals()">{{ i18n.t('common.cancel') }}</button>
-            <button class="btn btn-primary" (click)="saveDato()">{{ editDatoId() ? i18n.t('common.save') : i18n.t('common.create') }}</button>
-          </div>
-        </div>
-      </div>
-    }
-
-    <!-- CATEGORÍA MODAL -->
-    @if (modalCat()) {
-      <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]" style="background: rgba(0,0,0,0.35);" backdropDismiss (dismissed)="onEsc()">
-        <div class="card w-full max-w-sm mx-4 animate-fade-in" (click)="$event.stopPropagation()">
-          <h3 class="text-base font-semibold mb-4">{{ editCatId() ? i18n.t('cfg.categoria.editar') : i18n.t('cfg.categoria.nueva') }}</h3>
-          <input [(ngModel)]="formCatNombre" class="text-sm" [placeholder]="i18n.t('cfg.nombre')" [style.border-color]="catNombreError() ? 'var(--error-color)' : ''" (ngModelChange)="catNombreError.set('')" />@if (catNombreError()) { <div class="text-xs mt-1" style="color: var(--error-color);">{{ catNombreError() }}</div> }
-          <div class="flex justify-end gap-2 mt-5">
-            <button class="btn btn-outline" (click)="closeModals()">{{ i18n.t('common.cancel') }}</button>
-            <button class="btn btn-primary" (click)="saveCategoria()">{{ editCatId() ? i18n.t('common.save') : i18n.t('common.create') }}</button>
-          </div>
-        </div>
-      </div>
-    }
-
-    <!-- IDIOMA MODAL -->
-    @if (modalIdioma()) {
-      <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]" style="background: rgba(0,0,0,0.35);" backdropDismiss (dismissed)="onEsc()">
-        <div class="card w-full max-w-sm mx-4 animate-fade-in" (click)="$event.stopPropagation()">
-          <h3 class="text-base font-semibold mb-4">{{ editIdiomaId() ? i18n.t('cfg.idioma.editar') : i18n.t('cfg.idioma.nuevo') }}</h3>
-          @if (!editIdiomaId()) {
-            <select [(ngModel)]="formIdiomaNombre" class="text-sm" [style.border-color]="idiomaNombreError() ? 'var(--error-color)' : ''" (ngModelChange)="idiomaNombreError.set('')">
-              <option [ngValue]="''" disabled>{{ i18n.t('cfg.idioma.select') }}</option>
-              @for (lang of availableIdiomas(); track lang) { <option [value]="lang">{{ lang }}</option> }
-            </select>
-          } @else {
-            <input [(ngModel)]="formIdiomaNombre" class="text-sm" [placeholder]="i18n.t('cfg.idioma.ej')" [style.border-color]="idiomaNombreError() ? 'var(--error-color)' : ''" (ngModelChange)="idiomaNombreError.set('')" />
-          }
-          @if (idiomaNombreError()) { <div class="text-xs mt-1" style="color: var(--error-color);">{{ idiomaNombreError() }}</div> }
-          <div class="flex justify-end gap-2 mt-5">
-            <button class="btn btn-outline" (click)="closeModals()">{{ i18n.t('common.cancel') }}</button>
-            <button class="btn btn-primary" (click)="saveIdioma()">{{ editIdiomaId() ? i18n.t('common.save') : i18n.t('common.create') }}</button>
-          </div>
-        </div>
-      </div>
-    }
-
-    <!-- TAG MODAL -->
-    @if (modalTag()) {
-      <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]" style="background: rgba(0,0,0,0.35);" backdropDismiss (dismissed)="onEsc()">
-        <div class="card w-full max-w-sm mx-4 animate-fade-in" (click)="$event.stopPropagation()">
-          <h3 class="text-base font-semibold mb-4">{{ editTagId() ? i18n.t('cfg.tag.editar') : i18n.t('cfg.tag.nuevo') }}</h3>
-          <div class="space-y-3">
-            <div>
-              <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('cfg.nombre') }}</label>
-              <input [(ngModel)]="formTagNombre" class="text-sm" [placeholder]="i18n.t('cfg.tagPlaceholder')" [style.border-color]="tagNombreError() ? 'var(--error-color)' : ''" (ngModelChange)="tagNombreError.set('')" />@if (tagNombreError()) { <div class="text-xs mt-1" style="color: var(--error-color);">{{ tagNombreError() }}</div> }
-            </div>
-            <div>
-              <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('cfg.color') }}</label>
-              <div class="flex items-center gap-2">
-                <button type="button" class="w-8 h-8 rounded-md flex items-center justify-center text-base border-0 cursor-pointer transition-colors" style="font-size: 1rem; background: transparent;" (click)="tagColorInput.click()" [title]="i18n.t('cfg.elegirColor')">🎨</button>
-                <input #tagColorInput type="color" [(ngModel)]="formTagColor" style="position: absolute; width: 0; height: 0; opacity: 0; border: none; padding: 0; margin: 0; overflow: hidden;" />
-                <span class="w-5 h-5 rounded-full shrink-0" style="border: 2px solid var(--border);" [style.background-color]="formTagColor"></span>
-              </div>
-            </div>
-          </div>
-          <div class="flex justify-end gap-2 mt-5">
-            <button class="btn btn-outline" (click)="closeModals()">{{ i18n.t('common.cancel') }}</button>
-            <button class="btn btn-primary" (click)="saveTag()">{{ editTagId() ? i18n.t('common.save') : i18n.t('common.create') }}</button>
-          </div>
-        </div>
-      </div>
-    }
-
-    <!-- ELIMINAR CON REASIGNACIÓN -->
-    @if (reassignModal()) {
-      <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]" style="background: rgba(0,0,0,0.35);" backdropDismiss (dismissed)="onEsc()">
-        <div class="card w-full max-w-sm mx-4 animate-fade-in" (click)="$event.stopPropagation()">
-          <h3 class="text-base font-semibold mb-2">{{ pendingDeleteKind === 'categoria' ? i18n.t('cfg.deleteCatTitle') : i18n.t('cfg.deleteTagTitle') }}</h3>
-          @if (pendingDeleteKind === 'categoria') {
-            <p class="text-sm mb-4" style="opacity: 0.7;">{{ i18n.t('cfg.deleteCatMsg', { cat: i18n.categoriaLabel(pendingDeleteName()), count: pendingDeleteCount }) }}</p>
-          } @else {
-            <p class="text-sm mb-4" style="opacity: 0.7;">{{ i18n.t('cfg.deleteTagMsg', { tag: i18n.tagLabel(pendingDeleteName()), count: pendingDeleteCount }) }}</p>
-          }
-          <select [(ngModel)]="reassignDestId" class="text-sm">
-            @for (o of reassignDestOptions(); track o.id) { <option [ngValue]="o.id">{{ o.label }}</option> }
-          </select>
-          <div class="flex justify-end gap-2 mt-5">
-            <button class="btn btn-outline" (click)="cancelReassign()">{{ i18n.t('common.cancel') }}</button>
-            <button class="btn btn-primary" (click)="confirmReassign()">{{ i18n.t('cfg.deleteAndReassign') }}</button>
-          </div>
-        </div>
-      </div>
-    }
-
-    <!-- REVISIÓN DE CONFLICTOS AL IMPORTAR -->
-    @if (importReview()) {
-      <app-import-conflict [groups]="importReview()!.groups" [busy]="importBusy()" (confirmar)="confirmImport($event)" (cancelar)="cancelImport()" />
-    }

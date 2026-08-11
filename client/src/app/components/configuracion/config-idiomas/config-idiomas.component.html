@@ -1,0 +1,39 @@
+<div>
+      <div class="flex justify-end mb-4">
+        <button class="btn btn-primary w-full sm:w-auto" (click)="openIdiomaModal()">{{ i18n.t('cfg.nuevoIdioma') }}</button>
+      </div>
+      @if (loading()) {
+        <div class="card text-center py-12 flex items-center justify-center gap-2" style="opacity: 0.5;"><span class="loader"></span> {{ i18n.t('common.loading') }}</div>
+      } @else {
+        @for (i of idiomas(); track i.id; let idx = $index) {
+          <div class="card flex items-center gap-3 flex-wrap animate-stagger" [style.animation-delay]="stagger(idx)">
+            <span class="text-sm flex-1 min-w-0 truncate">{{ i.nombre }}</span>
+            <span class="text-xs shrink-0" style="opacity: 0.35; white-space: nowrap;">{{ idiomaRefCount(i.nombre) }} {{ i18n.t('cfg.refs') }}</span>
+            <button class="btn btn-ghost btn-sm text-sm" (click)="setDefaultIdioma(i.id)" [style.opacity]="defaultIdiomaNombre === i.nombre ? '1' : '0.3'" [title]="i18n.t('cfg.setDefault')">⭐</button>
+            <button class="btn btn-ghost btn-sm" (click)="openIdiomaModal(i)" [title]="i18n.t('common.edit')">✏️</button>
+            <button class="btn btn-ghost btn-sm" (click)="removeIdioma(i.id)" [title]="i18n.t('common.delete')">🗑️</button>
+          </div>
+        }
+      }
+    </div>
+
+    @if (modalIdioma()) {
+      <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[20vh]" style="background: rgba(0,0,0,0.35);" backdropDismiss (dismissed)="onEsc()">
+        <div class="card w-full max-w-sm mx-4 animate-fade-in" (click)="$event.stopPropagation()">
+          <h3 class="text-base font-semibold mb-4">{{ editIdiomaId() ? i18n.t('cfg.idioma.editar') : i18n.t('cfg.idioma.nuevo') }}</h3>
+          @if (!editIdiomaId()) {
+            <select [(ngModel)]="formIdiomaNombre" class="text-sm" [style.border-color]="idiomaNombreError() ? 'var(--error-color)' : ''" (ngModelChange)="idiomaNombreError.set('')">
+              <option [ngValue]="''" disabled>{{ i18n.t('cfg.idioma.select') }}</option>
+              @for (lang of availableIdiomas(); track lang) { <option [value]="lang">{{ lang }}</option> }
+            </select>
+          } @else {
+            <input [(ngModel)]="formIdiomaNombre" class="text-sm" [placeholder]="i18n.t('cfg.idioma.ej')" [style.border-color]="idiomaNombreError() ? 'var(--error-color)' : ''" (ngModelChange)="idiomaNombreError.set('')" />
+          }
+          @if (idiomaNombreError()) { <div class="text-xs mt-1" style="color: var(--error-color);">{{ idiomaNombreError() }}</div> }
+          <div class="flex justify-end gap-2 mt-5">
+            <button class="btn btn-outline" (click)="closeModals()">{{ i18n.t('common.cancel') }}</button>
+            <button class="btn btn-primary" (click)="saveIdioma()">{{ editIdiomaId() ? i18n.t('common.save') : i18n.t('common.create') }}</button>
+          </div>
+        </div>
+      </div>
+    }
