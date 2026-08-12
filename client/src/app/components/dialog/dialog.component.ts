@@ -5,24 +5,7 @@ import { I18nService } from '../../services/i18n.service';
 @Component({
   selector: 'app-dialog',
   standalone: true,
-  template: `
-    @if (dialog.state().open && dialog.state().type === 'confirm') {
-      <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[15vh]" style="background: rgba(0,0,0,0.3);">
-        <div class="card mx-4 max-w-sm w-full animate-fade-in max-h-[80vh] overflow-y-auto" (click)="$event.stopPropagation()">
-          <p class="text-sm mb-4">{{ dialog.state().message }}</p>
-          <div class="flex justify-end gap-2">
-            <button class="btn btn-outline" (click)="cancel()">{{ i18n.t('dialog.cancel') }}</button>
-            <button class="btn btn-primary" (click)="ok()">{{ i18n.t('dialog.ok') }}</button>
-          </div>
-        </div>
-      </div>
-    }
-    @if (dialog.state().open && dialog.state().type === 'toast') {
-      <div class="fixed bottom-6 left-1/2 -translate-x-1/2 px-4 py-2 rounded-lg text-sm z-[100] animate-slide-up" style="background: var(--accent); color: var(--accent-contrast, #fff);">
-        {{ dialog.state().message }}
-      </div>
-    }
-  `,
+  templateUrl: './dialog.component.html',
 })
 export class DialogComponent {
   constructor(public dialog: DialogService, public i18n: I18nService) {}

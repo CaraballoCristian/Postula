@@ -1,0 +1,36 @@
+<!-- EDIT MODAL -->
+    @if (editModal()) {
+      <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[10vh]" style="background: rgba(0,0,0,0.3);" backdropDismiss (dismissed)="dismissed.emit()">
+        <div class="card w-full max-w-lg mx-4 animate-fade-in max-h-[85vh] overflow-y-auto" (click)="$event.stopPropagation()">
+          <h3 class="text-base font-semibold mb-4">{{ i18n.t('hist.editTitle') }}</h3>
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('hist.field.empresa') }}</label>
+              <select [(ngModel)]="editForm.empresa" class="text-sm" (ngModelChange)="empresaChange.emit($event)">
+                @for (e of editEmpresaOptions; track e) { <option [value]="e">{{ e }}</option> }
+              </select>
+            </div>
+            @if (editUsed().has('oferta_laboral')) {
+              <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('hist.field.oferta') }}</label><input [(ngModel)]="editForm.oferta_laboral" class="text-sm" /></div>
+            }
+            @if (editUsed().has('nombre_empleado')) {
+              <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('hist.field.reclutador') }}</label><input [(ngModel)]="editForm.nombre_empleado" class="text-sm" /></div>
+            }
+            @if (editUsed().has('puesto_empleado')) {
+              <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('hist.field.puestoRecl') }}</label><input [(ngModel)]="editForm.puesto_empleado" class="text-sm" /></div>
+            }
+            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('hist.field.estado') }}</label>
+              <select [(ngModel)]="editForm.estado" class="text-sm">
+                @for (e of estados; track e.value) { @if (e.value !== OTRAS) { <option [value]="e.value">{{ estadoLabel(e.value) }}</option> } }
+              </select>
+            </div>
+            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('hist.field.linkEmpresa') }}</label><input [(ngModel)]="editForm.link_empresa" class="text-sm" placeholder="https://..." /></div>
+            <div><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('hist.field.contactoEmpleado') }}</label><input [(ngModel)]="editForm.contacto_empleado" class="text-sm" placeholder="https://linkedin.com/..." /></div>
+            <div class="col-span-2"><label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('hist.field.notas') }}</label><textarea [(ngModel)]="editForm.notas" rows="3" class="text-sm" placeholder="Notas"></textarea></div>
+          </div>
+          <div class="flex justify-end gap-2 mt-5">
+            <button class="btn btn-outline" (click)="cancel.emit()">{{ i18n.t('common.cancel') }}</button>
+            <button class="btn btn-primary" (click)="save.emit()">{{ i18n.t('common.save') }}</button>
+          </div>
+        </div>
+      </div>
+    }

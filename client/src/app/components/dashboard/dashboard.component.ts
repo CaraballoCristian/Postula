@@ -1,8 +1,11 @@
-import { Component, OnInit, signal, computed, effect } from '@angular/core';
+import { Component, OnInit, signal, computed, effect, inject, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ApiService } from '../../services/api.service';
 import { SharedStateService } from '../../services/shared-state.service';
 import { I18nService } from '../../services/i18n.service';
 import { Postulacion, Categoria, Idioma, Tag } from '../../models/interfaces';
+import { OTRAS } from '../../models/constants';
+import { dayKey } from '../../utils/utils';
 
 interface EstadoGroup {
   value: string;
@@ -21,13 +24,6 @@ interface BarItem {
 
 type Quick = 'today' | 'week' | 'month' | 'all';
 
-function dayKey(d: Date): string {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
-}
-
 function startOfDay(d: Date): Date {
   return new Date(d.getFullYear(), d.getMonth(), d.getDate());
 }
@@ -36,155 +32,7 @@ function startOfDay(d: Date): Date {
   selector: 'app-dashboard',
   standalone: true,
   imports: [],
-  template: `
-    <div class="space-y-4">
-      @if (loading()) {
-        <div class="card text-center py-10 flex items-center justify-center gap-2" style="opacity: 0.5;">
-          <span class="loader"></span> {{ i18n.t('common.loading') }}
-        </div>
-      } @else {
-        <!-- FILTROS -->
-        <div class="card flex flex-col sm:flex-row items-stretch sm:items-center gap-2 sm:gap-3">
-          <div class="flex gap-1 flex-wrap">
-            @for (q of quickOpts; track q) {
-              <button class="view-pill" [class.active]="quick() === q" (click)="setQuick(q)">{{ quickLabel(q) }}</button>
-            }
-          </div>
-          <div class="flex items-center gap-2 flex-1 justify-end flex-wrap">
-            <label class="text-xs flex items-center gap-1" style="opacity: 0.7;">
-              {{ i18n.t('dash.desde') }}
-              <input type="date" [value]="fromStr()" (change)="setFrom($event)" class="w-auto" style="font-size: 0.8rem; padding: 0.3rem 0.5rem;" />
-            </label>
-            <label class="text-xs flex items-center gap-1" style="opacity: 0.7;">
-              {{ i18n.t('dash.hasta') }}
-              <input type="date" [value]="toStr()" (change)="setTo($event)" class="w-auto" style="font-size: 0.8rem; padding: 0.3rem 0.5rem;" />
-            </label>
-            @if (from() || to()) {
-              <button class="btn btn-ghost btn-sm" (click)="clearRange()">✕</button>
-            }
-          </div>
-        </div>
-
-        <!-- ══ BENTO GRID ══ -->
-        <div class="grid grid-cols-1 md:grid-cols-4 auto-rows-min gap-3">
-            <!-- Racha hero -->
-            <div class="card md:col-span-2 md:row-span-2 flex flex-col items-center justify-center gap-2 text-center"
-                 style="background: linear-gradient(135deg, rgba(250,204,21,0.12), transparent); border-color: rgba(250,204,21,0.35);">
-              <span class="text-xs uppercase tracking-widest" style="opacity: 0.6;">{{ i18n.t('dash.streak') }}</span>
-              <span class="text-5xl sm:text-6xl font-bold leading-none">🔥 {{ streak() }}</span>
-              <span class="text-sm" style="opacity: 0.6;">{{ i18n.t('dash.streakHint', { days: streak() }) }}</span>
-            </div>
-            <!-- Total -->
-            <div class="card flex flex-col gap-1">
-              <span class="text-xs" style="opacity: 0.55;">{{ i18n.t('dash.total') }}</span>
-              <span class="text-2xl font-semibold">{{ filtered().length }}</span>
-              <span class="text-xs" style="opacity: 0.45;">{{ i18n.t('dash.totalHint', { month: totalMonth(), all: totalAll() }) }}</span>
-            </div>
-            <!-- vs período anterior -->
-            <div class="card flex flex-col gap-1">
-              <span class="text-xs" style="opacity: 0.55;">{{ i18n.t(compTitle()) }}</span>
-              <span class="text-2xl font-semibold" [style.color]="comp().delta >= 0 ? '#16a34a' : '#dc2626'">
-                {{ comp().delta >= 0 ? '▲' : '▼' }} {{ comp().delta }}%
-              </span>
-              <span class="text-xs" style="opacity: 0.45;">{{ i18n.t(compHint(), { cur: comp().cur, prev: comp().prev }) }}</span>
-            </div>
-            <!-- Tendencia wide -->
-            <div class="card md:col-span-2">
-              <h3 class="text-sm font-semibold mb-3">{{ i18n.t(trendTitle()) }}</h3>
-              @if (trend().length === 0) {
-                <p class="text-sm py-4 text-center" style="opacity: 0.4;">{{ i18n.t('dash.empty') }}</p>
-              } @else {
-                <div class="flex items-end gap-1 sm:gap-2 h-28">
-                  @for (t of trend(); track t.label) {
-                    <div class="flex flex-col items-center flex-1 min-w-0 h-full">
-                      <div class="flex flex-col items-center justify-end w-full gap-1 flex-1 min-h-0">
-                        <span class="text-[10px] font-medium" style="opacity: 0.7;">{{ t.count || '' }}</span>
-                        <div class="w-full rounded-t-md" [style.height]="(t.count / trendMax()) * 100 + '%'" style="min-height: 6px; background: var(--accent); opacity: 0.9;"></div>
-                      </div>
-                      <span class="text-[10px] truncate w-full text-center shrink-0" style="opacity: 0.5; height: 1rem; line-height: 1rem;">{{ t.label }}</span>
-                    </div>
-                  }
-                </div>
-              }
-            </div>
-            <!-- Estado donut wide -->
-            <div class="card md:col-span-2">
-              <h3 class="text-sm font-semibold mb-3">{{ i18n.t('dash.byEstado') }}</h3>
-              @if (estados().length === 0) {
-                <p class="text-sm py-4 text-center" style="opacity: 0.4;">{{ i18n.t('dash.empty') }}</p>
-              } @else {
-                <div class="flex flex-col sm:flex-row items-center gap-5">
-                  <div class="pie-wrap shrink-0">
-                    <svg viewBox="0 0 120 120" class="pie">
-                      @for (seg of pie(); track seg.color) {
-                        <circle r="50" cx="60" cy="60" fill="none" [attr.stroke]="seg.color" stroke-width="14"
-                          [attr.stroke-dasharray]="seg.dash" [attr.stroke-dashoffset]="seg.offset" transform="rotate(-90 60 60)" />
-                      }
-                    </svg>
-                    <div class="pie-center">
-                      <span class="text-xl font-semibold leading-none">{{ all().length }}</span>
-                      <span class="text-[10px]" style="opacity: 0.5;">{{ i18n.t('dash.total') }}</span>
-                    </div>
-                  </div>
-                  <ul class="flex-1 w-full space-y-1.5 min-w-0">
-                    @for (e of estados(); track e.value) {
-                      <li class="flex items-center gap-2 text-sm min-w-0">
-                        <span class="w-2.5 h-2.5 rounded-full shrink-0" [style.background]="e.color"></span>
-                        <span class="truncate min-w-0" style="opacity: 0.85;">{{ e.label }}</span>
-                        <span class="ml-auto font-medium">{{ e.count }}</span>
-                        <span class="text-xs w-10 text-right" style="opacity: 0.5;">{{ e.pct }}%</span>
-                      </li>
-                    }
-                  </ul>
-                </div>
-              }
-            </div>
-            <!-- Por categoría -->
-            <div class="card">
-              <h3 class="text-sm font-semibold mb-3">{{ i18n.t('dash.byCategoria') }}</h3>
-              @if (categorias().length === 0) {
-                <p class="text-sm py-4 text-center" style="opacity: 0.4;">{{ i18n.t('dash.empty') }}</p>
-              } @else {
-                <ul class="space-y-2">
-                  @for (c of categorias(); track c.label) {
-                    <li>
-                      <div class="flex items-center justify-between text-sm mb-1">
-                        <span class="truncate" style="opacity: 0.85;">{{ c.label }}</span>
-                        <span class="text-xs" style="opacity: 0.5;">{{ c.count }} · {{ c.pct }}%</span>
-                      </div>
-                      <div class="rounded-sm h-2" style="background: var(--surface-hover);">
-                        <div class="h-2 rounded-sm" [style.width]="c.pct + '%'" [style.background]="c.color"></div>
-                      </div>
-                    </li>
-                  }
-                </ul>
-              }
-            </div>
-            <!-- Por idioma -->
-            <div class="card">
-              <h3 class="text-sm font-semibold mb-3">{{ i18n.t('dash.byIdioma') }}</h3>
-              @if (idiomas().length === 0) {
-                <p class="text-sm py-4 text-center" style="opacity: 0.4;">{{ i18n.t('dash.empty') }}</p>
-              } @else {
-                <ul class="space-y-2">
-                  @for (c of idiomas(); track c.label) {
-                    <li>
-                      <div class="flex items-center justify-between text-sm mb-1">
-                        <span class="truncate" style="opacity: 0.85;">{{ c.label }}</span>
-                        <span class="text-xs" style="opacity: 0.5;">{{ c.count }} · {{ c.pct }}%</span>
-                      </div>
-                      <div class="rounded-sm h-2" style="background: var(--surface-hover);">
-                        <div class="h-2 rounded-sm" [style.width]="c.pct + '%'" [style.background]="c.color"></div>
-                      </div>
-                    </li>
-                  }
-                </ul>
-              }
-            </div>
-          </div>
-      }
-    </div>
-  `,
+  templateUrl: './dashboard.component.html',
   styles: [`
     :host { display: block; }
     .pie-wrap {
@@ -213,6 +61,7 @@ function startOfDay(d: Date): Date {
   `],
 })
 export class DashboardComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
   loading = signal(true);
   all = signal<Postulacion[]>([]);
   tags = signal<Tag[]>([]);
@@ -223,6 +72,7 @@ export class DashboardComponent implements OnInit {
   from = signal<Date | null>(null);
   to = signal<Date | null>(null);
   quickOpts: Quick[] = ['today', 'week', 'month', 'all'];
+  readonly OTRAS = OTRAS;
 
   quickLabel(q: Quick): string {
     return this.i18n.t(`dash.${q}` as any);
@@ -260,10 +110,10 @@ export class DashboardComponent implements OnInit {
     this.loading.set(true);
     let done = 0;
     const check = () => { if (++done >= 4) this.loading.set(false); };
-    this.api.getPostulaciones({ trashed: false }).subscribe(d => { this.all.set(d); check(); });
-    this.api.getTags().subscribe(d => { this.tags.set(d); check(); });
-    this.api.getCategorias().subscribe(d => { this.categoriasList.set(d); check(); });
-    this.api.getIdiomas().subscribe(d => { this.idiomasList.set(d); check(); });
+    this.api.getPostulaciones({ trashed: false }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => { this.all.set(d); check(); });
+    this.api.getTags().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => { this.tags.set(d); check(); });
+    this.api.getCategorias().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => { this.categoriasList.set(d); check(); });
+    this.api.getIdiomas().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => { this.idiomasList.set(d); check(); });
   }
 
   // ── Rango ──
@@ -337,12 +187,11 @@ export class DashboardComponent implements OnInit {
       prev = this.countRange(prevStart, new Date(curStart.getTime() - day));
     } else {
       type = 'week';
-      const to = now;
-      const from = new Date(to.getTime() - 6 * day);
-      const prevTo = new Date(from.getTime() - day);
-      const prevFrom = new Date(prevTo.getTime() - 6 * day);
-      cur = this.countRange(from, to);
-      prev = this.countRange(prevFrom, prevTo);
+      // Semana calendario anclada al lunes (misma lógica que el gráfico de tendencia).
+      const anchor = new Date(now.getTime() - ((now.getDay() + 6) % 7) * day); // lunes de esta semana
+      const prevAnchor = new Date(anchor.getTime() - 7 * day); // lunes de la semana anterior
+      cur = this.countRange(anchor, now);
+      prev = this.countRange(prevAnchor, new Date(anchor.getTime() - day));
     }
     const delta = prev === 0 ? (cur === 0 ? 0 : 100) : Math.round(((cur - prev) / prev) * 100);
     return { delta, cur, prev, type };
@@ -435,24 +284,27 @@ export class DashboardComponent implements OnInit {
 
   // ── Estado ──
   private stateLabel(value: string) {
-    if (!value) return this.i18n.t('dash.sinEstado');
+    if (!value || value === '__sin__') return this.i18n.t('dash.sinEstado');
     return this.i18n.tagLabel(value);
   }
   private stateColor(value: string) {
-    if (!value) return 'var(--surface-hover)';
+    if (!value || value === '__sin__') return 'var(--surface-hover)';
     return this.tags().find(t => t.nombre === value)?.color || 'var(--surface-hover)';
   }
   estados = computed<EstadoGroup[]>(() => {
+    // Solo cuentan las tags reales de la cuenta; estados huérfanos (importados con la tag
+    // renombrada/inexistente) y __otras__ colapsan a una sola porción "Sin etiqueta".
+    const known = new Set(this.tags().map(t => t.nombre));
     const map = new Map<string, number>();
     for (const p of this.all()) {
-      const key = p.estado;
+      const key = p.estado && known.has(p.estado) ? p.estado : (p.estado ? this.OTRAS : '__sin__');
       map.set(key, (map.get(key) || 0) + 1);
     }
     const total = this.all().length || 1;
     return [...map.entries()].map(([value, count]) => ({
-      value: value || '__sin__',
-      label: this.stateLabel(value),
-      color: this.stateColor(value),
+      value,
+      label: value === this.OTRAS ? this.i18n.t('hist.sinEtiqueta') : this.stateLabel(value),
+      color: value === this.OTRAS ? '#eee' : this.stateColor(value),
       count,
       pct: Math.round((count / total) * 100),
     })).sort((a, b) => b.count - a.count);

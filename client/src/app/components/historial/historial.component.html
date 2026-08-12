@@ -1,0 +1,120 @@
+<app-hist-filtros
+  [filtroGlobal]="filtroGlobal"
+  [categorias]="categorias"
+  [checkedCategorias]="checkedCategorias"
+  [estados]="estados"
+  [checkedEstados]="checkedEstados"
+  [idiomas]="idiomas"
+  [checkedIdiomas]="checkedIdiomas"
+  [openDropdown]="openDropdown"
+  [viewMode]="viewMode"
+  [selectionMode]="selectionMode"
+  [selectedIds]="selectedIds"
+  [trashMode]="trashMode"
+  [filteredCount]="filteredCount"
+  [bulkEstado]="bulkEstado"
+  [OTRAS]="OTRAS"
+  [estadoLabel]="estadoLabel.bind(this)"
+  (bulkEstadoChange)="bulkEstado = $event"
+  (setView)="setView($event)"
+  (selectAll)="selectAll()"
+  (toggleSelectionMode)="toggleSelectionMode()"
+  (toggleTrash)="toggleTrash()"
+  (applyBulk)="applyBulk()"
+  (bulkDelete)="bulkDelete()"
+/>
+
+@if (loading()) {
+  <div class="card text-center py-12 flex items-center justify-center gap-2" style="opacity: 0.5;">
+    <span class="loader"></span> {{ i18n.t('common.loading') }}
+  </div>
+} @else if (postulaciones().length === 0) {
+  <div class="card flex items-center justify-center py-12" style="opacity: 0.35;">
+    <span>{{ trashMode() ? i18n.t('pap.empty') : i18n.t('hist.sinPostulaciones') }}</span>
+  </div>
+} @else {
+  @if (trashMode()) {
+    <div class="flex justify-end mb-2">
+      <button class="btn btn-outline btn-sm" (click)="emptyTrash()">{{ i18n.t('pap.vaciar') }}</button>
+    </div>
+  }
+  @if (viewMode() === 'tabla' || trashMode()) {
+  <app-postulacion-table
+    [rows]="filteredSorted()"
+    [columns]="columns"
+    [selectionMode]="selectionMode()"
+    [trashMode]="trashMode()"
+    [sortField]="sortField()"
+    [sortDir]="sortDir()"
+    [expandedId]="expandedId()"
+    [expandedMsg]="expandedMsg()"
+    [estados]="estados"
+    [catNombres]="catNombres"
+    [isSelected]="isSelectedFn"
+    (toggleFav)="toggleFav($event)"
+    (toggleSelect)="toggleSelect($event)"
+    (toggleSort)="onTableSort($event)"
+    (view)="viewPost($event)"
+    (edit)="editPost($event)"
+    (delete)="deletePost($event)"
+    (restore)="restorePost($event)"
+    (deleteForGood)="deleteForGood($event)"
+    (toggleMsg)="toggleMsg($event)"
+    (copy)="copyMsg($event)"
+  />
+  } @else if (viewMode() === 'empresa') {
+  <app-hist-por-empresa
+    [grupos]="grupos"
+    [openEmpresas]="openEmpresas"
+    [openEmpresaMensajes]="openEmpresaMensajes"
+    [empresaSortDir]="empresaSortDir"
+    [selectionMode]="selectionMode"
+    [sortField]="sortField"
+    [sortDir]="sortDir"
+    [expandedId]="expandedId"
+    [expandedMsg]="expandedMsg"
+    [estados]="estados"
+    [catNombres]="catNombres"
+    [empresaTableColumns]="empresaTableColumns"
+    [isSelected]="isSelectedFn"
+    [hasFavorita]="hasFavorita.bind(this)"
+    [postCountLabel]="postCountLabel.bind(this)"
+    [empresaLink]="empresaLink.bind(this)"
+    [getEmpresaMensaje]="getEmpresaMensaje.bind(this)"
+    [fixUrl]="fixUrl.bind(this)"
+    (toggleEmpresaSort)="toggleEmpresaSort()"
+    (toggleEmpresa)="toggleEmpresa($event)"
+    (toggleEmpresaMensaje)="toggleEmpresaMensaje($event)"
+    (openEmpresaLinkModal)="openEmpresaLinkModal($event)"
+    (deleteEmpresaGroup)="deleteEmpresaGroup($event)"
+    (toggleFav)="toggleFav($event)"
+    (toggleSelect)="toggleSelect($event)"
+    (toggleSort)="onTableSort($event)"
+    (view)="viewPost($event)"
+    (edit)="editPost($event)"
+    (delete)="deletePost($event)"
+    (toggleMsg)="toggleMsg($event)"
+    (copy)="copyMsg($event)"
+  />
+  }
+}
+<app-hist-empresa-link-modal
+  [empresaLinkModal]="empresaLinkModal"
+  (cancel)="closeEmpresaLinkModal()"
+  (save)="saveEmpresaLink()"
+  (dismissed)="onEsc()"
+/>
+
+<app-hist-editar-modal
+  [editModal]="editModal"
+  [editForm]="editForm"
+  [editUsed]="editUsed"
+  [editEmpresaOptions]="editEmpresaOptions"
+  [estados]="estados"
+  [OTRAS]="OTRAS"
+  [estadoLabel]="estadoLabel.bind(this)"
+  (empresaChange)="onEditEmpresaChange($event)"
+  (cancel)="closeEditModal()"
+  (save)="saveEdit()"
+  (dismissed)="onEsc()"
+/>

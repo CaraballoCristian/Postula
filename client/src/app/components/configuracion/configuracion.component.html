@@ -1,0 +1,36 @@
+<div>
+      <nav class="flex overflow-x-auto border-b mb-5" style="border-color: var(--border);">
+        @for (s of sections; track s.id) {
+          <button class="relative px-2 sm:px-3 py-2 text-sm font-medium cursor-pointer select-none bg-transparent border-0 rounded-none transition-colors whitespace-nowrap"
+            [style.color]="activeSection() === s.id ? 'var(--accent)' : ''"
+            [style.opacity]="activeSection() === s.id ? '1' : '0.55'"
+            (click)="activeSection.set(s.id)">
+            {{ i18n.t(s.labelKey) }}
+            @if (activeSection() === s.id) {
+              <span class="absolute bottom-0 left-0 right-0 h-0.5 rounded-full" style="background-color: var(--accent);"></span>
+            }
+          </button>
+        }
+      </nav>
+
+      @switch (activeSection()) {
+        @case ('datos') {
+          <app-config-datos />
+        }
+        @case ('categorias') {
+          <app-config-categorias />
+        }
+        @case ('idiomas') {
+          <app-config-idiomas />
+        }
+        @case ('tags') {
+          <app-config-tags />
+        }
+        @case ('backup') {
+          <app-config-backup />
+        }
+        @case ('seguridad') {
+          <app-config-seguridad />
+        }
+      }
+    </div>

@@ -1,0 +1,140 @@
+    <div class="space-y-4">
+      @if (loading()) {
+        <div class="card text-center py-6 flex items-center justify-center gap-2" style="opacity: 0.5;">
+          <span class="loader"></span> {{ i18n.t('common.loading') }}
+        </div>
+      } @else {
+      <div class="space-y-4">
+        <div class="flex flex-col sm:flex-row items-stretch sm:items-end gap-2">
+          <div class="w-full sm:flex-1" style="max-width: 100%;">
+            <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('np.categoria') }}</label>
+            <app-dropdown
+              id="postCat"
+              [selected]="categoriaId"
+              (selectedChange)="categoriaId = $event; onCategoriaChange()"
+              [options]="catOpts()"
+              [placeholder]="i18n.t('common.select')"
+            />
+          </div>
+          <div class="w-full sm:flex-1" style="max-width: 100%;">
+            <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('np.idioma') }}</label>
+            <app-dropdown
+              id="postIdioma"
+              [selected]="idioma"
+              (selectedChange)="idioma = $event; onIdiomaChange()"
+              [options]="idiomaOpts()"
+              [placeholder]="i18n.t('common.select')"
+            />
+          </div>
+          <div class="hidden sm:block flex-1"></div>
+          @if (categoriaId && idioma) {
+            @for (tipo of tipos; track tipo) {
+              <label class="toggle-pill" [class.active]="isChecked(tipo)" (click)="toggleTipo(tipo)" style="margin-bottom: 1px;">
+                <span>{{ TIPO_ICONS[tipo] }}</span>
+                <span>{{ tipoLabel(tipo) }}</span>
+              </label>
+            }
+          }
+        </div>
+
+        @if (selected().length > 0) {
+          <div class="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-3">
+            @for (sel of selected(); track sel.tipo) {
+              <div>
+                <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ TIPO_ICONS[sel.tipo] }} {{ tipoLabel(sel.tipo) }}</label>
+                <app-dropdown
+                  [id]="'tpl-' + sel.tipo"
+                  [selected]="sel.template"
+                  (selectedChange)="sel.template = $event; buildDynamicFields()"
+                  [options]="tplOpts(sel.tipo)"
+                  [placeholder]="i18n.t('common.select')"
+                />
+              </div>
+            }
+          </div>
+        }
+
+        @if (dynamicFields().length > 0) {
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2">
+            @for (field of dynamicFields(); track field.key) {
+              <div>
+                <label class="text-xs block mb-1" style="opacity: 0.5;">{{ labelFromKey(field.key) }}</label>
+                @if (field.key === 'empresa') {
+                  <div class="flex items-center gap-2">
+                    <div class="flex-1">
+                      <app-dropdown
+                        id="postEmpresa"
+                        [selected]="fieldValues()['empresa'] || ''"
+                        (selectedChange)="onEmpresaSelected($event)"
+                        [options]="empresaOpts()"
+                        [placeholder]="i18n.t('np.selectEmpresa')"
+                      />
+                    </div>
+                    <button class="btn btn-outline" style="flex-shrink: 0; padding: 0.4rem 0.75rem;" (click)="openEmpresaModal()" [title]="i18n.t('np.crearEmpresa')">＋</button>
+                  </div>
+                } @else {
+                  <input [ngModel]="fieldValues()[field.key] || ''" (ngModelChange)="setField(field.key, $event)" [placeholder]="labelFromKey(field.key)" [style.border-color]="fieldErrors().has(field.key) ? 'var(--error-color)' : ''" />
+                }
+                @if (fieldErrors().has(field.key)) { <span class="text-xs" style="color: var(--error-color);">{{ i18n.t('common.required') }}</span> }
+              </div>
+            }
+          </div>
+        }
+
+        @if (selected().length > 0 && dynamicFields().length > 0) {
+          <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2">
+            <div>
+              <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('np.estado') }}</label>
+              <app-dropdown
+                id="postEstado"
+                [selected]="estado"
+                (selectedChange)="estado = $event"
+                [options]="estadoOpts()"
+                [placeholder]="i18n.t('common.select')"
+              />
+            </div>
+            <div>
+              <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('np.linkEmpresa') }}</label>
+              <input [(ngModel)]="linkEmpresa" [placeholder]="i18n.t('np.linkEmpresaPh')" class="text-sm" />
+            </div>
+            <div>
+              <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('np.contactoEmpleado') }}</label>
+              <input [(ngModel)]="contactoEmpleado" [placeholder]="i18n.t('np.contactoEmpleadoPh')" class="text-sm" />
+            </div>
+            <div class="col-span-2">
+              <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('np.notas') }}</label>
+              <textarea [(ngModel)]="notas" rows="2" class="text-sm" style="resize: none;" [placeholder]="i18n.t('np.notasPh')"></textarea>
+            </div>
+          </div>
+        }
+
+        @if (selected().length > 0) {
+          <button class="btn btn-primary w-full" (click)="generar()">{{ i18n.t('np.generar') }}</button>
+        }
+      </div>
+
+      @if (resultados().length > 0) {
+        <div #resultadosSection class="space-y-1">
+          @for (res of resultados(); track res.tipo; let i = $index) {
+            <div class="animate-stagger" [style.animation-delay]="stagger(i)" style="border: 1px solid var(--border); border-radius: 0.5rem; overflow: hidden;">
+              <div class="flex items-center gap-3 px-4 py-2.5 cursor-pointer" [style.background-color]="expandedResult() === res.tipo ? 'var(--surface-hover)' : 'var(--surface)'" (click)="toggleResult(res.tipo)">
+                <span class="text-sm font-medium flex-1 truncate">{{ TIPO_ICONS[res.tipo] }} {{ tipoLabel(res.tipo) }} <span class="text-xs" style="opacity: 0.35; font-weight: 400;">— {{ previewText(res.texto) }}</span></span>
+                <span class="text-xs" style="opacity: 0.4;">{{ expandedResult() === res.tipo ? '▲' : '▼' }}</span>
+                <button class="btn btn-ghost btn-sm text-sm" (click)="clipboard.copy(res.texto); $event.stopPropagation()" [title]="i18n.t('hist.copy')">📋</button>
+              </div>
+              @if (expandedResult() === res.tipo) {
+                <div style="border-top: 1px solid var(--border);"><pre class="text-sm whitespace-pre-wrap font-sans leading-relaxed px-4 py-3" style="margin: 0;">{{ res.texto }}</pre></div>
+              }
+            </div>
+          }
+          <div class="flex gap-2 mt-3">
+            <button class="btn btn-primary flex-1" (click)="copiarTodo()">📋 {{ i18n.t('np.copiarTodo') }}</button>
+            <button class="btn btn-outline" (click)="guardarPostulacion()">💾 {{ i18n.t('np.guardar') }}</button>
+          </div>
+        </div>
+      }
+      }
+
+      <!-- CREAR EMPRESA MODAL -->
+      <app-empresa-modal #empresaModal (crear)="crearEmpresa($event)" />
+    </div>

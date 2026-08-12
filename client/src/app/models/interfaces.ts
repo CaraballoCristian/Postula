@@ -1,3 +1,5 @@
+import { DEFAULT_ESTADO } from './constants';
+
 export interface Categoria {
   id: number;
   nombre: string;
@@ -128,7 +130,7 @@ export interface Empresa {
 }
 
 export const ESTADOS: EstadoOption[] = [
-  { value: 'solicitado', label: 'Solicitado', color: 'var(--surface-hover)' },
+  { value: DEFAULT_ESTADO, label: 'Solicitado', color: 'var(--surface-hover)' },
   { value: 'mensajeado', label: 'Mensajeado', color: '#16a34a' },
   { value: 'en_proceso', label: 'En proceso', color: '#2563eb' },
   { value: 'rechazado', label: 'Rechazado', color: '#dc2626' },

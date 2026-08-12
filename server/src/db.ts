@@ -2,8 +2,11 @@ import Database from 'better-sqlite3';
 import path from 'path';
 import fs from 'fs';
 
-const DATA_DIR = path.join(__dirname, '..', 'data');
-if (!fs.existsSync(DATA_DIR)) {
+// `__dirname` no existe bajo Vitest (ESM); se usa el cwd solo como respaldo de tests.
+// Cuando POSTULATOOL_DB está seteada (tests/CI) no se toca el disco.
+const _dir = typeof __dirname !== 'undefined' ? __dirname : process.cwd();
+const DATA_DIR = path.join(_dir, '..', 'data');
+if (!process.env.POSTULATOOL_DB && !fs.existsSync(DATA_DIR)) {
   fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
@@ -504,6 +507,40 @@ addMigration('mensaje de empresa en empresas', () => {
     )
     WHERE resultado_empresa IS NULL OR resultado_empresa = ''
   `).run();
+});
+
+// ── v18: empresa = fuente única de link/mensaje (limpia duplicados de postulaciones) ──
+// El link y el mensaje de empresa viven solo en `empresas`. Las postulaciones los
+// referencian por nombre; sus columnas (link_empresa/resultado_empresa) quedan vacías.
+addMigration('empresa como fuente unica de link/mensaje', () => {
+  // Backfill defensivo del link en empresas desde la postulación más reciente con link,
+  // por si alguna fila empresa quedó sin el valor tras migraciones previas.
+  db.prepare(`
+    UPDATE empresas SET link = COALESCE((
+      SELECT p.link_empresa FROM postulaciones p
+      WHERE p.user_id = empresas.user_id AND p.empresa = empresas.nombre
+        AND p.link_empresa IS NOT NULL AND p.link_empresa <> ''
+      ORDER BY p.created_at DESC, p.id DESC LIMIT 1
+    ), link)
+    WHERE link IS NULL OR link = ''
+  `).run();
+  // Mismo backfill defensivo para el mensaje de empresa.
+  db.prepare(`
+    UPDATE empresas SET resultado_empresa = (
+      SELECT p.resultado_empresa FROM postulaciones p
+      WHERE p.user_id = empresas.user_id AND p.empresa = empresas.nombre
+        AND p.resultado_empresa IS NOT NULL AND p.resultado_empresa <> ''
+      ORDER BY p.created_at DESC, p.id DESC LIMIT 1
+    )
+    WHERE (resultado_empresa IS NULL OR resultado_empresa = '')
+      AND EXISTS (
+        SELECT 1 FROM postulaciones p
+        WHERE p.user_id = empresas.user_id AND p.empresa = empresas.nombre
+          AND p.resultado_empresa IS NOT NULL AND p.resultado_empresa <> ''
+      )
+  `).run();
+  // Limpia los duplicados: las postulaciones dejan de ser fuente de link/mensaje.
+  db.prepare(`UPDATE postulaciones SET link_empresa = '', resultado_empresa = NULL`).run();
 });
 
 /** Ejecuta las migraciones pendientes y avanza `user_version`. */
