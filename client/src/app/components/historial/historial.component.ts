@@ -1,4 +1,5 @@
-import { Component, signal, computed, effect, HostListener } from '@angular/core';
+import { Component, signal, computed, effect, HostListener, inject, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { ApiService } from '../../services/api.service';
 import { ClipboardService } from '../../services/clipboard.service';
@@ -25,6 +26,7 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
   templateUrl: './historial.component.html',
 })
 export class HistorialComponent {
+  private destroyRef = inject(DestroyRef);
   postulaciones = signal<Postulacion[]>([]);
   viewMode = signal<'tabla' | 'kanban' | 'empresa'>(localStorage.getItem('postulatool.hist.view') === 'kanban' ? 'tabla' : localStorage.getItem('postulatool.hist.view') === 'empresa' ? 'empresa' : 'tabla');
   filtroGlobal = signal('');
@@ -34,6 +36,7 @@ export class HistorialComponent {
   idiomas: string[] = [];
   checkedIdiomas = signal<Set<string>>(new Set());
   openDropdown = signal<'cat' | 'est' | 'idioma' | null>(null);
+  private closeDropdown = () => this.openDropdown.set(null);
   sortField = signal<SortField>('fecha');
   sortDir = signal<'asc' | 'desc'>('desc');
   expandedId = signal<number | null>(null);
@@ -181,7 +184,7 @@ export class HistorialComponent {
 
     if (m.id == null) {
       // No existe registro de empresa: crearlo (o vincular al existente con ese nombre).
-      this.api.createEmpresa({ nombre: empName, link: linkNuevo }).subscribe({
+      this.api.createEmpresa({ nombre: empName, link: linkNuevo }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: () => {
           this.closeEmpresaLinkModal();
           this.shared.empresasRefresh.update(v => v + 1);
@@ -192,7 +195,7 @@ export class HistorialComponent {
             this.loadEmpresas(() => {
               const e = this.findEmpresa(empName);
               if (e) {
-                this.api.updateEmpresa(e.id, { link: linkNuevo }).subscribe(() => {
+                this.api.updateEmpresa(e.id, { link: linkNuevo }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
                   this.closeEmpresaLinkModal();
                   this.shared.empresasRefresh.update(v => v + 1);
                   this.load();
@@ -212,7 +215,7 @@ export class HistorialComponent {
     }
 
     const original = this.empresas().find(e => e.id === m.id)?.nombre;
-    this.api.updateEmpresa(m.id, { nombre: m.nombre, link: linkNuevo }).subscribe({
+    this.api.updateEmpresa(m.id, { nombre: m.nombre, link: linkNuevo }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         if (original && m.nombre !== original) {
           this.openEmpresas.update(s => {
@@ -239,7 +242,7 @@ export class HistorialComponent {
     if (!ok) return;
     const e = this.findEmpresa(g.nombre);
     if (e) {
-      this.api.deleteEmpresa(e.id).subscribe({
+      this.api.deleteEmpresa(e.id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
         next: () => {
           this.openEmpresas.update(s => { const n = new Set(s); n.delete(g.nombre); return n; });
           this.shared.empresasRefresh.update(v => v + 1);
@@ -256,7 +259,7 @@ export class HistorialComponent {
   }
 
   loadEmpresas(onDone?: () => void) {
-    this.api.getEmpresas().subscribe(d => {
+    this.api.getEmpresas().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => {
       this.empresas.set(d);
       onDone?.();
     });
@@ -287,7 +290,8 @@ export class HistorialComponent {
       }
     });
     effect(() => this.persistFilters());
-    document.addEventListener('click', () => this.openDropdown.set(null));
+    document.addEventListener('click', this.closeDropdown);
+    this.destroyRef.onDestroy(() => document.removeEventListener('click', this.closeDropdown));
   }
 
   @HostListener('document:keydown.escape')
@@ -326,14 +330,14 @@ export class HistorialComponent {
     this.loadTags(checkDone);
     this.loadIdiomas(checkDone);
     this.loadEmpresas(checkDone);
-    this.api.getPostulaciones().subscribe(d => { this.postulaciones.set(d); checkDone(); });
+    this.api.getPostulaciones().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => { this.postulaciones.set(d); checkDone(); });
     this.inited = true;
   }
 
-  load() { this.loading.set(true); this.api.getPostulaciones({ trashed: this.trashMode() }).subscribe(d => { this.postulaciones.set(d); this.loading.set(false); }); }
+  load() { this.loading.set(true); this.api.getPostulaciones({ trashed: this.trashMode() }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => { this.postulaciones.set(d); this.loading.set(false); }); }
 
   loadCategorias(onDone?: () => void) {
-    this.api.getCategorias().subscribe(d => {
+    this.api.getCategorias().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => {
       this.categorias = d;
       this.catNombres = {};
       for (const c of d) this.catNombres[c.id] = c.nombre;
@@ -348,7 +352,7 @@ export class HistorialComponent {
   }
 
   loadIdiomas(onDone?: () => void) {
-    this.api.getIdiomas().subscribe(d => {
+    this.api.getIdiomas().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => {
       const oldChecked = new Set(this.checkedIdiomas());
       const oldNames = new Set(this.idiomas);
       const newNames = d.map(i => i.nombre);
@@ -368,7 +372,7 @@ export class HistorialComponent {
   }
 
   loadTags(onDone?: () => void) {
-    this.api.getTags().subscribe(d => {
+    this.api.getTags().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => {
       const oldChecked = new Set(this.checkedEstados());
       const oldNames = new Set(this.estados.map(e => e.value));
       this.estados = d.map(t => ({ value: t.nombre, label: this.i18n.tagLabel(t.nombre), color: t.color }));
@@ -409,12 +413,12 @@ export class HistorialComponent {
     this.load();
   }
   async restorePost(id: number) {
-    this.api.restorePostulacion(id).subscribe(() => this.load());
+    this.api.restorePostulacion(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.load());
   }
   async deleteForGood(id: number) {
     const ok = await this.dialog.confirm(this.i18n.t('pap.delHard'));
     if (!ok) return;
-    this.api.deletePostulacion(id, 'hard').subscribe(() => this.load());
+    this.api.deletePostulacion(id, 'hard').pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => this.load());
   }
   async emptyTrash() {
     const ok = await this.dialog.confirm(this.i18n.t('pap.vaciarConfirm'));
@@ -450,7 +454,7 @@ export class HistorialComponent {
     if (targetEstado === this.OTRAS) return;
     const p = event.item.data as Postulacion;
     if (!p || p.estado === targetEstado) return;
-    this.api.updatePostulacion(p.id, { estado: targetEstado } as any).subscribe({
+    this.api.updatePostulacion(p.id, { estado: targetEstado } as any).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => this.postulaciones.update(list => list.map(x => x.id === p.id ? { ...x, estado: targetEstado as Postulacion['estado'] } : x)),
       error: () => this.load(),
     });
@@ -518,7 +522,7 @@ export class HistorialComponent {
 
   toggleFav(p: Postulacion) {
     const newVal = p.favorito ? 0 : 1;
-    this.api.updatePostulacion(p.id, { favorito: newVal } as any).subscribe(() => {
+    this.api.updatePostulacion(p.id, { favorito: newVal } as any).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       this.postulaciones.update(list =>
         list.map(x => x.id === p.id ? { ...x, favorito: newVal } : x)
       );
@@ -592,7 +596,7 @@ export class HistorialComponent {
   async deletePost(id: number) {
     const ok = await this.dialog.confirm(this.i18n.t('hist.deleteConfirm'));
     if (!ok) return;
-    this.api.deletePostulacion(id).subscribe(() => { this.expandedId.set(null); this.load(); });
+    this.api.deletePostulacion(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => { this.expandedId.set(null); this.load(); });
   }
 
   openEditModal(p: Postulacion) {
@@ -667,7 +671,7 @@ export class HistorialComponent {
       this.shared.empresasRefresh.update(v => v + 1);
     }
 
-    this.api.updatePostulacion(this.editId, payload).subscribe({
+    this.api.updatePostulacion(this.editId, payload).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.closeEditModal();
         this.load();

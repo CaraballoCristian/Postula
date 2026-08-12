@@ -1,4 +1,5 @@
-import { Component, OnInit, signal, computed, effect } from '@angular/core';
+import { Component, OnInit, signal, computed, effect, inject, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { ApiService } from '../../services/api.service';
 import { SharedStateService } from '../../services/shared-state.service';
 import { I18nService } from '../../services/i18n.service';
@@ -60,6 +61,7 @@ function startOfDay(d: Date): Date {
   `],
 })
 export class DashboardComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
   loading = signal(true);
   all = signal<Postulacion[]>([]);
   tags = signal<Tag[]>([]);
@@ -108,10 +110,10 @@ export class DashboardComponent implements OnInit {
     this.loading.set(true);
     let done = 0;
     const check = () => { if (++done >= 4) this.loading.set(false); };
-    this.api.getPostulaciones({ trashed: false }).subscribe(d => { this.all.set(d); check(); });
-    this.api.getTags().subscribe(d => { this.tags.set(d); check(); });
-    this.api.getCategorias().subscribe(d => { this.categoriasList.set(d); check(); });
-    this.api.getIdiomas().subscribe(d => { this.idiomasList.set(d); check(); });
+    this.api.getPostulaciones({ trashed: false }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => { this.all.set(d); check(); });
+    this.api.getTags().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => { this.tags.set(d); check(); });
+    this.api.getCategorias().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => { this.categoriasList.set(d); check(); });
+    this.api.getIdiomas().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => { this.idiomasList.set(d); check(); });
   }
 
   // ── Rango ──

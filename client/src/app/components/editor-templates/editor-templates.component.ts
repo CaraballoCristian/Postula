@@ -1,4 +1,5 @@
-import { Component, signal, effect, HostListener } from "@angular/core";
+import { Component, signal, effect, HostListener, inject, DestroyRef } from "@angular/core";
+import { takeUntilDestroyed } from "@angular/core/rxjs-interop";
 import { FormsModule } from "@angular/forms";
 import { DropdownComponent } from "../dropdown/dropdown.component";
 import { ApiService } from "../../services/api.service";
@@ -22,6 +23,7 @@ import { BackdropDismissDirective } from "../../directives/backdrop-dismiss.dire
   templateUrl: './editor-templates.component.html',
 })
 export class EditorTemplatesComponent {
+  private destroyRef = inject(DestroyRef);
   templates = signal<Template[]>([]);
   categorias: Categoria[] = [];
   idiomas: Idioma[] = [];
@@ -73,19 +75,19 @@ export class EditorTemplatesComponent {
     const checkDone = () => {
       if (++done >= 4) this.loading.set(false);
     };
-    this.api.getCategorias().subscribe((data) => {
+    this.api.getCategorias().pipe(takeUntilDestroyed(this.destroyRef)).subscribe((data) => {
       this.categorias = data;
       checkDone();
     });
-    this.api.getIdiomas().subscribe((data) => {
+    this.api.getIdiomas().pipe(takeUntilDestroyed(this.destroyRef)).subscribe((data) => {
       this.idiomas = data;
       checkDone();
     });
-    this.api.getConfig().subscribe((data) => {
+    this.api.getConfig().pipe(takeUntilDestroyed(this.destroyRef)).subscribe((data) => {
       this.configKeys = data.filter(c => !['default_categoria_id', 'default_idioma'].includes(c.clave)).map(c => c.clave);
       checkDone();
     });
-    this.api.getTemplates({}).subscribe((data) => {
+    this.api.getTemplates({}).pipe(takeUntilDestroyed(this.destroyRef)).subscribe((data) => {
       this.templates.set(data);
       checkDone();
     });
@@ -93,7 +95,7 @@ export class EditorTemplatesComponent {
   }
 
   reloadCategorias() {
-    this.api.getCategorias().subscribe((data) => {
+    this.api.getCategorias().pipe(takeUntilDestroyed(this.destroyRef)).subscribe((data) => {
       this.categorias = data;
       if (this.filtroCat && !data.some(c => c.id === this.filtroCat)) this.filtroCat = null;
       if (this.formCategoriaId && !data.some(c => c.id === this.formCategoriaId)) this.formCategoriaId = data[0]?.id ?? null;
@@ -101,7 +103,7 @@ export class EditorTemplatesComponent {
   }
 
   reloadIdiomas() {
-    this.api.getIdiomas().subscribe((data) => {
+    this.api.getIdiomas().pipe(takeUntilDestroyed(this.destroyRef)).subscribe((data) => {
       this.idiomas = data;
       if (this.filtroLang && !data.some(i => i.nombre === this.filtroLang)) this.filtroLang = null;
       if (this.formIdioma && !data.some(i => i.nombre === this.formIdioma)) this.formIdioma = data[0]?.nombre ?? null;
@@ -109,7 +111,7 @@ export class EditorTemplatesComponent {
   }
 
   reloadConfigKeys() {
-    this.api.getConfig().subscribe((data) => {
+    this.api.getConfig().pipe(takeUntilDestroyed(this.destroyRef)).subscribe((data) => {
       this.configKeys = data.filter(c => !['default_categoria_id', 'default_idioma'].includes(c.clave)).map(c => c.clave);
     });
   }
@@ -120,6 +122,7 @@ export class EditorTemplatesComponent {
     if (this.filtroLang) filters.idioma = this.filtroLang;
     this.api
       .getTemplates(filters)
+      .pipe(takeUntilDestroyed(this.destroyRef))
       .subscribe((data) => this.templates.set(data));
   }
 
@@ -255,7 +258,7 @@ export class EditorTemplatesComponent {
     const req = id
       ? this.api.updateTemplate(id, data)
       : this.api.createTemplate(data);
-    req.subscribe(() => {
+    req.pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       this.closeModal();
       this.loadTemplates();
       this.shared.templatesRefresh.update((v) => v + 1);
@@ -265,7 +268,7 @@ export class EditorTemplatesComponent {
   async deleteTemplate(id: number) {
     const ok = await this.dialog.confirm(this.i18n.t('tpl.deleteConfirm'));
     if (!ok) return;
-    this.api.deleteTemplate(id).subscribe(() => {
+    this.api.deleteTemplate(id).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(() => {
       this.loadTemplates();
       this.shared.templatesRefresh.update((v) => v + 1);
     });

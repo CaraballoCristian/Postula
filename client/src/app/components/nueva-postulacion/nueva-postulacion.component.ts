@@ -1,4 +1,5 @@
-import { Component, OnInit, signal, ViewChild, ElementRef, effect } from '@angular/core';
+import { Component, OnInit, signal, ViewChild, ElementRef, effect, inject, DestroyRef } from '@angular/core';
+import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
 import { FormsModule } from '@angular/forms';
 import { DropdownComponent } from '../dropdown/dropdown.component';
 import { EmpresaModalComponent } from '../empresa-modal/empresa-modal.component';
@@ -24,6 +25,7 @@ interface SelectedTemplate {
   templateUrl: './nueva-postulacion.component.html',
 })
 export class NuevaPostulacionComponent implements OnInit {
+  private destroyRef = inject(DestroyRef);
   @ViewChild('resultadosSection') resultadosSection!: ElementRef;
   @ViewChild('empresaModal') empresaModal!: EmpresaModalComponent;
   categorias: Categoria[] = [];
@@ -90,7 +92,7 @@ estado = DEFAULT_ESTADO;
   }
 
   loadEmpresas(onDone?: () => void) {
-    this.api.getEmpresas().subscribe(d => {
+    this.api.getEmpresas().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => {
       this.empresas.set(d);
       onDone?.();
     });
@@ -116,7 +118,7 @@ estado = DEFAULT_ESTADO;
 crearEmpresa(data: { nombre: string; link: string }) {
     const nombre = data.nombre.trim();
     const link = data.link.trim();
-    this.api.createEmpresa({ nombre, link }).subscribe({
+    this.api.createEmpresa({ nombre, link }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: (e) => {
         this.empresas.update(list => [...list, e].sort((a, b) => a.nombre.localeCompare(b.nombre)));
         this.shared.empresasRefresh.update(v => v + 1);
@@ -134,7 +136,7 @@ crearEmpresa(data: { nombre: string; link: string }) {
   }
 
   loadCategorias(onDone?: () => void, initial = false) {
-    this.api.getCategorias().subscribe(data => {
+    this.api.getCategorias().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(data => {
       this.categorias = data;
       if (this.categoriaId !== null && !data.some(c => c.id === this.categoriaId)) this.categoriaId = null;
       if (initial && !this.templatesInitialized && this.categoriaId && this.idioma) { this.templatesInitialized = true; this.loadTemplates(); }
@@ -143,7 +145,7 @@ crearEmpresa(data: { nombre: string; link: string }) {
   }
 
   loadIdiomas(onDone?: () => void, initial = false) {
-    this.api.getIdiomas().subscribe(data => {
+    this.api.getIdiomas().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(data => {
       this.idiomas = data;
       if (this.idioma && !data.some(i => i.nombre === this.idioma)) this.idioma = null;
       if (initial && !this.templatesInitialized && this.categoriaId && this.idioma) { this.templatesInitialized = true; this.loadTemplates(); }
@@ -152,7 +154,7 @@ crearEmpresa(data: { nombre: string; link: string }) {
   }
 
   loadTags(onDone?: () => void) {
-    this.api.getTags().subscribe(data => {
+    this.api.getTags().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(data => {
       const prev = this.estados.map(e => e.value);
       this.estados = data.map(t => ({ value: t.nombre, label: this.i18n.tagLabel(t.nombre) }));
       if (data.length === 0) {
@@ -170,7 +172,7 @@ crearEmpresa(data: { nombre: string; link: string }) {
   }
 
   loadConfig(onDone?: () => void, initial = false) {
-    this.api.getConfig().subscribe(d => {
+    this.api.getConfig().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => {
       this.configKeys = {};
       let defCat: number | null = null;
       let defLang: string | null = null;
@@ -189,7 +191,7 @@ crearEmpresa(data: { nombre: string; link: string }) {
   }
 
   reloadConfigKeys() {
-    this.api.getConfig().subscribe(d => {
+    this.api.getConfig().pipe(takeUntilDestroyed(this.destroyRef)).subscribe(d => {
       this.configKeys = {};
       let defCat: number | null = null;
       let defLang: string | null = null;
@@ -220,14 +222,14 @@ crearEmpresa(data: { nombre: string; link: string }) {
   onIdiomaChange() { if (this.categoriaId && this.idioma) this.loadTemplates(); }
 
   reloadTemplates() {
-    this.api.getTemplates({ categoria_id: this.categoriaId!, idioma: this.idioma! }).subscribe(data => {
+    this.api.getTemplates({ categoria_id: this.categoriaId!, idioma: this.idioma! }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(data => {
       this.allTemplates.set(data);
       this.buildDynamicFields();
     });
   }
 
   loadTemplates() {
-    this.api.getTemplates({ categoria_id: this.categoriaId!, idioma: this.idioma! }).subscribe(data => {
+    this.api.getTemplates({ categoria_id: this.categoriaId!, idioma: this.idioma! }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe(data => {
       this.allTemplates.set(data);
       this.selected.update(sels => sels.map(s => {
         const defaults = data
@@ -363,11 +365,12 @@ crearEmpresa(data: { nombre: string; link: string }) {
       template_ids: sel.map(s => s.template!.id), valores_usados: vals,
       resultado_email: byTipo['email'], resultado_empresa: byTipo['mensaje_empresa'], resultado_recruiter: byTipo['mensaje_recruiter'],
       notas: this.notas, estado: this.estado, link_empresa: this.linkEmpresa, contacto_empleado: this.contactoEmpleado,
-    }).subscribe({
+    }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.shared.historialRefresh.update(v => v + 1);
         this.dialog.toast(this.i18n.t('np.saved'));
-        this.selected.set([]);
+        const defaults = this.templatesByTipo('mensaje_recruiter');
+        this.selected.set([{ tipo: 'mensaje_recruiter', template: defaults[0] || null }]);
         this.dynamicFields.set([]);
         this.fieldValues.set({});
         this.fieldErrors.set(new Set());
@@ -379,6 +382,7 @@ crearEmpresa(data: { nombre: string; link: string }) {
         this.contactoEmpleado = '';
         this.selectedEmpresaId = null;
         this.empresaLinkOriginal = '';
+        this.buildDynamicFields();
         window.scrollTo({ top: 0, behavior: 'smooth' });
       },
       error: () => this.dialog.toast(this.i18n.t('np.saveError'), 'error'),
