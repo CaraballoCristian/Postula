@@ -1,6 +1,5 @@
 import { Component, signal, computed, effect, HostListener, inject, DestroyRef } from '@angular/core';
 import { takeUntilDestroyed } from '@angular/core/rxjs-interop';
-import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { ApiService } from '../../services/api.service';
 import { ClipboardService } from '../../services/clipboard.service';
 import { DialogService } from '../../services/dialog.service';
@@ -22,13 +21,13 @@ type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_labor
 @Component({
   selector: 'app-historial',
   standalone: true,
-  imports: [DragDropModule, PostulacionTableComponent, HistFiltrosComponent, HistPorEmpresaComponent, HistEditarModalComponent, HistEmpresaLinkModalComponent],
+  imports: [PostulacionTableComponent, HistFiltrosComponent, HistPorEmpresaComponent, HistEditarModalComponent, HistEmpresaLinkModalComponent],
   templateUrl: './historial.component.html',
 })
 export class HistorialComponent {
   private destroyRef = inject(DestroyRef);
   postulaciones = signal<Postulacion[]>([]);
-  viewMode = signal<'tabla' | 'kanban' | 'empresa'>(localStorage.getItem('postulatool.hist.view') === 'kanban' ? 'tabla' : localStorage.getItem('postulatool.hist.view') === 'empresa' ? 'empresa' : 'tabla');
+  viewMode = signal<'tabla' | 'empresa'>(localStorage.getItem('postulatool.hist.view') === 'empresa' ? 'empresa' : 'tabla');
   filtroGlobal = signal('');
   categorias: Categoria[] = [];
   checkedCategorias = signal<Set<number>>(new Set());
@@ -432,32 +431,9 @@ export class HistorialComponent {
 
   filteredCount = computed(() => this.filteredSorted().length);
 
-  setView(v: 'tabla' | 'kanban' | 'empresa') {
+  setView(v: 'tabla' | 'empresa') {
     this.viewMode.set(v);
     localStorage.setItem('postulatool.hist.view', v);
-  }
-
-  kanbanColumns = computed(() => {
-    const known = this.estados.map(e => e.value).filter(v => v !== this.OTRAS);
-    const list = this.filteredSorted();
-    return this.estados
-      .filter(e => this.checkedEstados().has(e.value))
-      .map(e => ({
-        value: e.value,
-        label: e.label,
-        color: e.color,
-        items: list.filter(p => e.value === this.OTRAS ? !known.includes(p.estado) : p.estado === e.value),
-      }));
-  });
-
-  onKanbanDrop(event: CdkDragDrop<any[]>, targetEstado: string) {
-    if (targetEstado === this.OTRAS) return;
-    const p = event.item.data as Postulacion;
-    if (!p || p.estado === targetEstado) return;
-    this.api.updatePostulacion(p.id, { estado: targetEstado } as any).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
-      next: () => this.postulaciones.update(list => list.map(x => x.id === p.id ? { ...x, estado: targetEstado as Postulacion['estado'] } : x)),
-      error: () => this.load(),
-    });
   }
 
   filteredSorted(): Postulacion[] {

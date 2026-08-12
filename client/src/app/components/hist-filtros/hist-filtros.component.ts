@@ -18,7 +18,7 @@ export class HistFiltrosComponent {
   @Input() idiomas: string[] = [];
   @Input() checkedIdiomas!: WritableSignal<Set<string>>;
   @Input() openDropdown!: WritableSignal<'cat' | 'est' | 'idioma' | null>;
-  @Input() viewMode!: Signal<'tabla' | 'kanban' | 'empresa'>;
+  @Input() viewMode!: Signal<'tabla' | 'empresa'>;
   @Input() selectionMode!: WritableSignal<boolean>;
   @Input() selectedIds!: WritableSignal<Set<number>>;
   @Input() trashMode!: WritableSignal<boolean>;
@@ -28,7 +28,7 @@ export class HistFiltrosComponent {
   @Input() estadoLabel: (v: string) => string = (v) => v;
 
   @Output() bulkEstadoChange = new EventEmitter<string>();
-  @Output() setView = new EventEmitter<'tabla' | 'kanban' | 'empresa'>();
+  @Output() setView = new EventEmitter<'tabla' | 'empresa'>();
   @Output() selectAll = new EventEmitter<void>();
   @Output() toggleSelectionMode = new EventEmitter<void>();
   @Output() toggleTrash = new EventEmitter<void>();
