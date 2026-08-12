@@ -8,6 +8,7 @@ import { I18nService } from '../../../services/i18n.service';
 import { TemplatesCacheService } from '../../../services/templates-cache.service';
 import { BackdropDismissDirective } from '../../../directives/backdrop-dismiss.directive';
 import { stagger as staggerUtil } from '../../../utils/utils';
+import { markErrorHandled } from '../../../interceptors/error.interceptor';
 
 @Component({
   selector: 'app-config-idiomas',
@@ -60,6 +61,7 @@ export class ConfigIdiomasComponent {
   idiomaRefCount(nombre: string): number { return this.cache.items().filter((t: any) => t.idioma === nombre).length; }
 
   private errorToast(err: any, dupKey: any, fallbackKey: any) {
+    markErrorHandled(err);
     if (err?.status === 409) this.dialog.toast(this.i18n.t(dupKey), 'error');
     else this.dialog.toast(this.i18n.t(fallbackKey), 'error');
   }

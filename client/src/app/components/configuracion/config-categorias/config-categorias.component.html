@@ -8,7 +8,7 @@
         @for (c of categorias(); track c.id; let i = $index) {
           <div class="card flex items-center gap-3 flex-wrap animate-stagger" [style.animation-delay]="stagger(i)">
             <span class="text-sm flex-1 min-w-0 truncate">{{ i18n.categoriaLabel(c.nombre) }}</span>
-            <span class="text-xs shrink-0" style="opacity: 0.35; white-space: nowrap;">{{ catRefCount(c.id) }} {{ i18n.t('cfg.refs') }}</span>
+            <span class="text-xs shrink-0" style="opacity: 0.35; white-space: nowrap;" [title]="i18n.t('cfg.refsCat')">{{ catRefCount(c.id) }} {{ i18n.t('cfg.refs') }}</span>
             <button class="btn btn-ghost btn-sm text-sm" (click)="setDefaultCategoria(c.id)" [style.opacity]="defaultCategoriaId === c.id ? '1' : '0.3'" [title]="i18n.t('cfg.setDefault')">⭐</button>
             <button class="btn btn-ghost btn-sm" (click)="openCatModal(c)" [title]="i18n.t('common.edit')">✏️</button>
             <button class="btn btn-ghost btn-sm" (click)="removeCategoria(c.id)" [title]="i18n.t('common.delete')">🗑️</button>

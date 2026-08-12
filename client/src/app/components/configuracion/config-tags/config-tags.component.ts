@@ -8,6 +8,7 @@ import { I18nService } from '../../../services/i18n.service';
 import { DEFAULT_TAG_LABELS } from '../../../i18n/labels';
 import { BackdropDismissDirective } from '../../../directives/backdrop-dismiss.directive';
 import { slugify as slugifyUtil, stagger as staggerUtil } from '../../../utils/utils';
+import { markErrorHandled } from '../../../interceptors/error.interceptor';
 
 @Component({
   selector: 'app-config-tags',
@@ -56,6 +57,7 @@ export class ConfigTagsComponent {
 
   slugify(name: string) { return slugifyUtil(name); }
   private errorToast(err: any, dupKey: any, fallbackKey: any) {
+    markErrorHandled(err);
     if (err?.status === 409) this.dialog.toast(this.i18n.t(dupKey), 'error');
     else this.dialog.toast(this.i18n.t(fallbackKey), 'error');
   }

@@ -8,6 +8,7 @@ import { I18nService } from '../../../services/i18n.service';
 import { TemplatesCacheService } from '../../../services/templates-cache.service';
 import { BackdropDismissDirective } from '../../../directives/backdrop-dismiss.directive';
 import { stagger as staggerUtil } from '../../../utils/utils';
+import { markErrorHandled } from '../../../interceptors/error.interceptor';
 
 @Component({
   selector: 'app-config-datos',
@@ -122,7 +123,7 @@ export class ConfigDatosComponent {
       }
       await new Promise<void>(r => this.api.updatePostulacion(p.id, {
         resultado_email: email, resultado_empresa: empresaMsg, resultado_recruiter: recruiter, valores_usados: values,
-      }).subscribe({ next: () => r(), error: () => r() }));
+      }).subscribe({ next: () => r(), error: (err) => { markErrorHandled(err); r(); } }));
       done++;
     }
     if (done > 0) this.dialog.toast(this.i18n.t('cfg.propDatoDone', { count: done }));

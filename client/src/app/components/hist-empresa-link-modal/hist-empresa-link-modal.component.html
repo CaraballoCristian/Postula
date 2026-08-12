@@ -1,0 +1,22 @@
+<!-- EDIT EMPRESA MODAL -->
+    @if (empresaLinkModal()) {
+      <div class="fixed inset-0 z-[100] flex items-start justify-center pt-[10vh]" style="background: rgba(0,0,0,0.3);" backdropDismiss (dismissed)="dismissed.emit()">
+        <div class="card w-full max-w-md mx-4 animate-fade-in" (click)="$event.stopPropagation()">
+          <h3 class="text-base font-semibold mb-4">{{ i18n.t('hist.editEmpresaTitle') }}</h3>
+          <div class="space-y-3">
+            <div>
+              <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('np.empresaNombre') }}</label>
+              <input [(ngModel)]="empresaLinkModal()!.nombre" class="text-sm" />
+            </div>
+            <div>
+              <label class="text-xs font-medium block mb-1" style="opacity: 0.5;">{{ i18n.t('np.empresaLink') }}</label>
+              <input [(ngModel)]="empresaLinkModal()!.link" class="text-sm" [placeholder]="i18n.t('np.empresaLinkPh')" />
+            </div>
+          </div>
+          <div class="flex justify-end gap-2 mt-5">
+            <button class="btn btn-outline" (click)="cancel.emit()">{{ i18n.t('common.cancel') }}</button>
+            <button class="btn btn-primary" (click)="save.emit()">{{ i18n.t('common.save') }}</button>
+          </div>
+        </div>
+      </div>
+    }

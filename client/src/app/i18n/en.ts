@@ -101,6 +101,7 @@ export const en: Record<TR, string> = {
   'common.todos': 'All',
   'common.error.save': 'Error saving',
   'common.error.delete': 'Error deleting',
+  'common.error.request': 'Connection error',
 
   // nueva postulación
   'np.categoria': 'Category',
@@ -157,6 +158,7 @@ export const en: Record<TR, string> = {
   'hist.overwriteLinkTitle': 'Change company link',
   'hist.overwriteLinkMsg': 'If you continue, the link of "{{empresa}}" will be overwritten from {{from}} to {{to}}.',
   'hist.overwriteCanceled': 'Save canceled. The company link was not changed.',
+  'hist.renameEmpresaConfirm': 'Renaming "{{old}}" to "{{new}}" will update {{count}} job applications. Continue?',
   'hist.linkChangeConfirm': 'The link of "{{empresa}}" will change in {{count}} job applications. Continue? (from {{from}} to {{to}})',
   'hist.col.fecha': 'Date',
   'hist.col.empresa': 'Company',
@@ -217,6 +219,9 @@ export const en: Record<TR, string> = {
   'cfg.intro': 'These values are filled in automatically when generating messages.',
   'cfg.nuevaVariable': '+ New variable',
   'cfg.refs': 'refs',
+  'cfg.refsCat': 'Templates using this category',
+  'cfg.refsIdioma': 'Templates using this language',
+  'cfg.refsDato': 'Templates containing this variable',
   'cfg.nuevaCategoria': '+ New category',
   'cfg.nuevoIdioma': '+ New language',
   'cfg.nuevoTag': '+ New status',

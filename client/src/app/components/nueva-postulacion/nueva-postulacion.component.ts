@@ -10,6 +10,7 @@ import { Categoria, Template, TIPO_ICONS, ESTADOS, Idioma, Tag, Empresa } from '
 import { I18nService } from '../../services/i18n.service';
 import { labelFromKey as labelFromKeyUtil, stagger as staggerUtil } from '../../utils/utils';
 import { DEFAULT_ESTADO, TIPOS_TR } from '../../models/constants';
+import { markErrorHandled } from '../../interceptors/error.interceptor';
 
 interface SelectedTemplate {
   tipo: Template['tipo'];
@@ -344,13 +345,13 @@ crearEmpresa(data: { nombre: string; link: string }) {
           }));
           if (!ok) { this.dialog.toast(this.i18n.t('hist.overwriteCanceled')); return; }
           await new Promise<void>(resolve => {
-            this.api.updateEmpresa(this.selectedEmpresaId!, { link: this.linkEmpresa }).subscribe({ next: () => resolve(), error: () => resolve() });
+            this.api.updateEmpresa(this.selectedEmpresaId!, { link: this.linkEmpresa }).subscribe({ next: () => resolve(), error: (err) => { markErrorHandled(err); resolve(); } });
           });
           this.shared.empresasRefresh.update(v => v + 1);
         }
       } else {
         await new Promise<void>(resolve => {
-          this.api.createEmpresa({ nombre, link: this.linkEmpresa }).subscribe({ next: () => resolve(), error: () => resolve() });
+          this.api.createEmpresa({ nombre, link: this.linkEmpresa }).subscribe({ next: () => resolve(), error: (err) => { markErrorHandled(err); resolve(); } });
         });
         this.shared.empresasRefresh.update(v => v + 1);
       }

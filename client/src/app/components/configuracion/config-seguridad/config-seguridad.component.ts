@@ -3,6 +3,7 @@ import { FormsModule } from '@angular/forms';
 import { AuthService } from '../../../services/auth.service';
 import { I18nService } from '../../../services/i18n.service';
 import { PasswordFieldComponent } from '../../password-field/password-field.component';
+import { markErrorHandled } from '../../../interceptors/error.interceptor';
 
 @Component({
   selector: 'app-config-seguridad',
@@ -64,6 +65,7 @@ export class ConfigSeguridadComponent {
         this.formConfirmPassword = '';
       },
       error: (err) => {
+        markErrorHandled(err);
         this.pwLoading.set(false);
         const msg = this.auth.errorMessage(err);
         this.pwMsg.set(msg ?? this.i18n.t('common.error.save'));

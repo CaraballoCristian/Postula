@@ -10,7 +10,7 @@
           <div class="card flex items-center gap-3 animate-stagger" [style.animation-delay]="stagger(i)">
             <span class="text-sm font-mono shrink-0" style="min-width: 120px;">{{ e.clave }}</span>
             <span class="text-sm flex-1 truncate" style="opacity: 0.6;">{{ e.valor || '—' }}</span>
-            <span class="text-xs shrink-0" style="opacity: 0.35; white-space: nowrap;">{{ refCount(e.clave) }} {{ i18n.t('cfg.refs') }}</span>
+            <span class="text-xs shrink-0" style="opacity: 0.35; white-space: nowrap;" [title]="i18n.t('cfg.refsDato')">{{ refCount(e.clave) }} {{ i18n.t('cfg.refs') }}</span>
             <button class="btn btn-ghost btn-sm" (click)="openDatosModal(e)" [title]="i18n.t('common.edit')">✏️</button>
             <button class="btn btn-ghost btn-sm" (click)="removeDato(e.id)" [title]="i18n.t('common.delete')">🗑️</button>
           </div>

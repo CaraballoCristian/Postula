@@ -1,5 +1,4 @@
 import { Component, signal, computed, effect, HostListener } from '@angular/core';
-import { FormsModule } from '@angular/forms';
 import { DragDropModule, CdkDragDrop } from '@angular/cdk/drag-drop';
 import { ApiService } from '../../services/api.service';
 import { ClipboardService } from '../../services/clipboard.service';
@@ -11,14 +10,18 @@ import { PostulacionTableComponent } from '../postulacion-table/postulacion-tabl
 import { EmpresaGrupo, groupByEmpresa } from '../../utils/grouping';
 import { fixUrl as fixUrlUtil, formatFecha as formatFechaUtil, stagger as staggerUtil } from '../../utils/utils';
 import { OTRAS, DEFAULT_ESTADO } from '../../models/constants';
-import { BackdropDismissDirective } from '../../directives/backdrop-dismiss.directive';
+import { markErrorHandled } from '../../interceptors/error.interceptor';
+import { HistFiltrosComponent } from '../hist-filtros/hist-filtros.component';
+import { HistPorEmpresaComponent } from '../hist-por-empresa/hist-por-empresa.component';
+import { HistEditarModalComponent } from '../hist-editar-modal/hist-editar-modal.component';
+import { HistEmpresaLinkModalComponent, EmpresaLinkModalData } from '../hist-empresa-link-modal/hist-empresa-link-modal.component';
 
 type SortField = 'fecha' | 'empresa' | 'categoria_id' | 'idioma' | 'oferta_laboral' | 'nombre_empleado' | 'puesto_empleado' | 'favorito' | 'estado';
 
 @Component({
   selector: 'app-historial',
   standalone: true,
-  imports: [FormsModule, DragDropModule, PostulacionTableComponent, BackdropDismissDirective],
+  imports: [DragDropModule, PostulacionTableComponent, HistFiltrosComponent, HistPorEmpresaComponent, HistEditarModalComponent, HistEmpresaLinkModalComponent],
   templateUrl: './historial.component.html',
 })
 export class HistorialComponent {
@@ -76,7 +79,7 @@ export class HistorialComponent {
   empresaSortDir = signal<'asc' | 'desc'>('asc');
   openEmpresas = signal<Set<string>>(new Set());
   openEmpresaMensajes = signal<Set<string>>(new Set());
-  empresaLinkModal = signal<{ id: number | null; nombre: string; link: string; linkOriginal: string } | null>(null);
+  empresaLinkModal = signal<EmpresaLinkModalData | null>(null);
 
   grupos = computed<EmpresaGrupo[]>(() => {
     const groups = groupByEmpresa(this.filteredSorted());
@@ -128,10 +131,10 @@ export class HistorialComponent {
   openEmpresaLinkModal(nombre: string) {
     const e = this.findEmpresa(nombre);
     if (e) {
-      this.empresaLinkModal.set({ id: e.id, nombre: e.nombre, link: e.link, linkOriginal: e.link });
+      this.empresaLinkModal.set({ id: e.id, nombre: e.nombre, nombreOriginal: e.nombre, link: e.link, linkOriginal: e.link });
     } else {
       // No hay registro de empresa (p. ej. tras importar): el modal igual abre y al guardar lo crea.
-      this.empresaLinkModal.set({ id: null, nombre, link: this.empresaLink(nombre), linkOriginal: '' });
+      this.empresaLinkModal.set({ id: null, nombre, nombreOriginal: nombre, link: this.empresaLink(nombre), linkOriginal: '' });
     }
   }
 
@@ -146,6 +149,21 @@ export class HistorialComponent {
     const matchesEmpresa = (nombre: string) => nombre.trim().toLowerCase() === empName.toLowerCase();
 
     if (!empName) { this.dialog.toast(this.i18n.t('common.required'), 'error'); return; }
+
+    const nombreOriginal = (m.nombreOriginal || '').trim();
+
+    if (m.id != null && empName !== nombreOriginal) {
+      const n = this.postulaciones().filter(p => p.empresa.trim().toLowerCase() === nombreOriginal.toLowerCase()).length;
+      const ok = await this.dialog.confirm(this.i18n.t('hist.renameEmpresaConfirm', {
+        old: nombreOriginal,
+        new: empName,
+        count: n,
+      }));
+      if (!ok) {
+        this.empresaLinkModal.set({ ...m, nombre: nombreOriginal });
+        return;
+      }
+    }
 
     if (linkNuevo !== linkOriginal) {
       const n = this.postulaciones().filter(p => matchesEmpresa(p.empresa)).length;
@@ -227,11 +245,11 @@ export class HistorialComponent {
           this.shared.empresasRefresh.update(v => v + 1);
           this.load();
         },
-        error: () => this.dialog.toast(this.i18n.t('common.error.save'), 'error'),
+        error: (err) => { markErrorHandled(err); this.dialog.toast(this.i18n.t('common.error.save'), 'error'); },
       });
     } else {
       for (const p of g.items) {
-        await new Promise<void>(r => this.api.deletePostulacion(p.id).subscribe({ next: () => r(), error: () => r() }));
+        await new Promise<void>(r => this.api.deletePostulacion(p.id).subscribe({ next: () => r(), error: (err) => { markErrorHandled(err); r(); } }));
       }
       this.load();
     }
@@ -403,25 +421,9 @@ export class HistorialComponent {
     if (!ok) return;
     const trashed = await new Promise<Postulacion[]>(resolve => this.api.getPostulaciones({ trashed: true }).subscribe(resolve));
     for (const p of trashed) {
-      await new Promise<void>(r => this.api.deletePostulacion(p.id, 'hard').subscribe({ next: () => r(), error: () => r() }));
+      await new Promise<void>(r => this.api.deletePostulacion(p.id, 'hard').subscribe({ next: () => r(), error: (err) => { markErrorHandled(err); r(); } }));
     }
     this.load();
-  }
-
-  toggleDropdown(type: 'cat' | 'est' | 'idioma') {
-    this.openDropdown.update(v => v === type ? null : type);
-  }
-
-  toggleCategoria(id: number) {
-    this.checkedCategorias.update(s => { const n = new Set(s); if (n.has(id)) n.delete(id); else n.add(id); return n; });
-  }
-
-  toggleEstado(val: string) {
-    this.checkedEstados.update(s => { const n = new Set(s); if (n.has(val)) n.delete(val); else n.add(val); return n; });
-  }
-
-  toggleIdioma(nombre: string) {
-    this.checkedIdiomas.update(s => { const n = new Set(s); if (n.has(nombre)) n.delete(nombre); else n.add(nombre); return n; });
   }
 
   filteredCount = computed(() => this.filteredSorted().length);
@@ -558,7 +560,7 @@ export class HistorialComponent {
     let done = 0;
     for (const id of ids) {
       await new Promise<void>(resolve => {
-        this.api.updatePostulacion(id, { estado: this.bulkEstado } as any).subscribe({ next: () => { done++; resolve(); }, error: () => resolve() });
+        this.api.updatePostulacion(id, { estado: this.bulkEstado } as any).subscribe({ next: () => { done++; resolve(); }, error: (err) => { markErrorHandled(err); resolve(); } });
       });
     }
     this.dialog.toast(this.i18n.t('hist.bulkDone', { count: done }));
@@ -577,7 +579,7 @@ export class HistorialComponent {
     let done = 0;
     for (const id of ids) {
       await new Promise<void>(resolve => {
-        this.api.deletePostulacion(id).subscribe({ next: () => { done++; resolve(); }, error: () => resolve() });
+        this.api.deletePostulacion(id).subscribe({ next: () => { done++; resolve(); }, error: (err) => { markErrorHandled(err); resolve(); } });
       });
     }
     this.dialog.toast(this.i18n.t('hist.bulkDeleteDone', { count: done }));
@@ -661,7 +663,7 @@ export class HistorialComponent {
         return;
       }
       const e = this.findEmpresa(empresaNom);
-      if (e) await new Promise<void>(r => this.api.updateEmpresa(e.id, { link: linkNuevo }).subscribe({ next: () => r(), error: () => r() }));
+      if (e) await new Promise<void>(r => this.api.updateEmpresa(e.id, { link: linkNuevo }).subscribe({ next: () => r(), error: (err) => { markErrorHandled(err); r(); } }));
       this.shared.empresasRefresh.update(v => v + 1);
     }
 

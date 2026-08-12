@@ -1,0 +1,110 @@
+<!-- FILTROS + BATCH ACTIONS -->
+    <div class="sticky top-0 z-20 mb-4 rounded-b-md" style="background-color: var(--surface); border-bottom: 1px solid var(--border); padding-top: 1.25rem; padding-bottom: 0.75rem;">
+      <div class="flex flex-col gap-2">
+        <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
+        
+      <div class="relative sm:w-4/12">
+          <input [ngModel]="filtroGlobal()" (ngModelChange)="filtroGlobal.set($event)" [placeholder]="i18n.t('hist.buscar')" class="text-sm w-full pr-7" />
+          @if (filtroGlobal()) {
+            <button class="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full text-xs border-0 cursor-pointer bg-transparent" style="opacity: 0.4; color: var(--text);" (click)="filtroGlobal.set('')" [title]="i18n.t('hist.limpiar')">×</button>
+          }
+        </div>
+        <div class="relative w-full sm:w-3/12">
+          <button class="text-sm flex items-center justify-between pl-2 pr-1 py-2 rounded-md cursor-pointer border w-full" style="border-color: var(--border); background: var(--surface); color: var(--text);" (click)="toggleDropdown('cat'); $event.stopPropagation()">
+            <span>{{ i18n.t('hist.categorias') }}</span>
+            <span>▾</span>
+          </button>
+          @if (openDropdown() === 'cat') {
+            <div class="absolute top-full left-0 mt-1 z-20 card p-1 w-full shadow-lg" (click)="$event.stopPropagation()">
+              @for (c of categorias; track c.id) {
+                <label class="flex items-center gap-2.5 px-2.5 py-1.5 rounded cursor-pointer text-sm" [style.background]="checkedCategorias().has(c.id) ? 'var(--surface-hover)' : 'transparent'">
+                  <input type="checkbox" [checked]="checkedCategorias().has(c.id)" (change)="toggleCategoria(c.id)" class="w-3.5 h-3.5" style="accent-color: var(--accent);" />
+                  {{ i18n.categoriaLabel(c.nombre) }}
+                </label>
+              }
+            </div>
+          }
+        </div>
+        <div class="relative w-full sm:w-3/12">
+          <button class="text-sm flex items-center justify-between pl-2 pr-1 py-2 rounded-md cursor-pointer border w-full" style="border-color: var(--border); background: var(--surface); color: var(--text);" (click)="toggleDropdown('est'); $event.stopPropagation()">
+            <span>{{ i18n.t('hist.estados') }}</span>
+            <span>▾</span>
+          </button>
+          @if (openDropdown() === 'est') {
+            <div class="absolute top-full left-0 mt-1 z-20 card p-1 w-full shadow-lg" (click)="$event.stopPropagation()">
+              @for (e of estados; track e.value) {
+                <label class="flex items-center gap-2.5 px-2.5 py-1.5 rounded cursor-pointer text-sm" [style.background]="checkedEstados().has(e.value) ? 'var(--surface-hover)' : 'transparent'">
+                  <input type="checkbox" [checked]="checkedEstados().has(e.value)" (change)="toggleEstado(e.value)" class="w-3.5 h-3.5" style="accent-color: var(--accent);" />
+                  {{ estadoLabel(e.value) }}
+                </label>
+              }
+            </div>
+          }
+        </div>
+        <div class="relative w-full sm:w-2/12">
+            <button class="text-sm flex items-center justify-between pl-2 pr-1 py-2 rounded-md cursor-pointer border w-full" style="border-color: var(--border); background: var(--surface); color: var(--text);" (click)="toggleDropdown('idioma'); $event.stopPropagation()">
+              <span>{{ i18n.t('hist.idiomas') }}</span>
+              <span>▾</span>
+            </button>
+            @if (openDropdown() === 'idioma') {
+              <div class="absolute top-full left-0 mt-1 z-20 card p-1 w-full shadow-lg" (click)="$event.stopPropagation()">
+                @for (i of idiomas; track i) {
+                  <label class="flex items-center gap-2.5 px-2.5 py-1.5 rounded cursor-pointer text-sm" [style.background]="checkedIdiomas().has(i) ? 'var(--surface-hover)' : 'transparent'">
+                    <input type="checkbox" [checked]="checkedIdiomas().has(i)" (change)="toggleIdioma(i)" class="w-3.5 h-3.5" style="accent-color: var(--accent);" />
+                    {{ i }}
+                  </label>
+                }
+              </div>
+            }
+          </div>
+      </div>
+      
+
+      <div class="flex items-center gap-2 sm:gap-3 flex-wrap">
+        <label class="toggle-pill" [class.active]="selectionMode()" (click)="toggleSelectionMode.emit()">
+          {{ i18n.t('hist.seleccionMultiple') }}
+        </label>
+
+        @if (selectionMode()) {
+          <div class="hidden sm:flex gap-2 sm:gap-3 items-center">
+            <button class="toggle-pill" (click)="selectAll.emit()">{{ i18n.t('hist.seleccionarTodo') }}</button>
+            <select [ngModel]="bulkEstado" (ngModelChange)="bulkEstadoChange.emit($event)" class="text-sm sm:w-auto">
+              @for (e of estados; track e.value) { @if (e.value !== OTRAS) { <option [value]="e.value">{{ estadoLabel(e.value) }}</option> } }
+            </select>
+            @if (selectedIds().size > 0) {
+              <button class="btn btn-md h-full" style="background: #dc2626; color: #fff;" (click)="applyBulk.emit()">{{ i18n.t('hist.aplicarA', { count: selectedIds().size }) }}</button>
+              <button class="btn btn-md h-full" style="background: #6b7280; color: #fff;" (click)="bulkDelete.emit()" title="{{ i18n.t('pap.ver') }}">🗑️</button>
+            }
+          </div>
+        }
+
+        @if (selectionMode()) {
+          <div class="flex sm:hidden flex-col gap-2 w-full">
+            <div class="flex gap-2">
+              <button class="toggle-pill" (click)="selectAll.emit()">{{ i18n.t('hist.seleccionarTodo') }}</button>
+              <select [ngModel]="bulkEstado" (ngModelChange)="bulkEstadoChange.emit($event)" class="text-sm flex-1">
+                @for (e of estados; track e.value) { @if (e.value !== OTRAS) { <option [value]="e.value">{{ estadoLabel(e.value) }}</option> } }
+              </select>
+            </div>
+            @if (selectedIds().size > 0) {
+              <button class="btn btn-sm py-2" style="background: #dc2626; color: #fff; flex: 1;" (click)="applyBulk.emit()">{{ i18n.t('hist.aplicarA', { count: selectedIds().size }) }}</button>
+              <button class="btn btn-sm py-2" style="background: #6b7280; color: #fff;" (click)="bulkDelete.emit()" title="{{ i18n.t('pap.ver') }}">🗑️</button>
+            }
+          </div>
+        }
+      </div>
+
+      <!-- FILA DE VISTA: toggle tabla/por empresa + contador + papelera -->
+      <div class="flex items-center gap-2 sm:gap-3 flex-wrap mt-1">
+        @if (!trashMode()) {
+          <div class="flex items-center gap-0.5 p-0.5 border rounded-md" style="border-color: var(--border); background: var(--surface);">
+            <button class="view-pill" [class.active]="viewMode() === 'tabla'" (click)="setView.emit('tabla')">☰ {{ i18n.t('hist.tabla') }}</button>
+            <button class="view-pill" [class.active]="viewMode() === 'empresa'" (click)="setView.emit('empresa')">▣ {{ i18n.t('hist.porEmpresa') }}</button>
+          </div>
+        }
+        <span class="text-xs ml-auto" style="opacity: 0.4;">{{ i18n.t('hist.resultado', { count: filteredCount() }) }}</span>
+        <button class="toggle-pill" [class.active]="trashMode()" [title]="i18n.t(trashMode() ? 'pap.cerrar' : 'pap.ver')" (click)="toggleTrash.emit()">{{ trashMode() ? '✖' : '🗑️' }}</button>
+      </div>
+        
+      </div>
+      </div>

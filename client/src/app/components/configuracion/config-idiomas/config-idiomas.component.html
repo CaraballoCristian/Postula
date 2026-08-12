@@ -8,7 +8,7 @@
         @for (i of idiomas(); track i.id; let idx = $index) {
           <div class="card flex items-center gap-3 flex-wrap animate-stagger" [style.animation-delay]="stagger(idx)">
             <span class="text-sm flex-1 min-w-0 truncate">{{ i.nombre }}</span>
-            <span class="text-xs shrink-0" style="opacity: 0.35; white-space: nowrap;">{{ idiomaRefCount(i.nombre) }} {{ i18n.t('cfg.refs') }}</span>
+            <span class="text-xs shrink-0" style="opacity: 0.35; white-space: nowrap;" [title]="i18n.t('cfg.refsIdioma')">{{ idiomaRefCount(i.nombre) }} {{ i18n.t('cfg.refs') }}</span>
             <button class="btn btn-ghost btn-sm text-sm" (click)="setDefaultIdioma(i.id)" [style.opacity]="defaultIdiomaNombre === i.nombre ? '1' : '0.3'" [title]="i18n.t('cfg.setDefault')">⭐</button>
             <button class="btn btn-ghost btn-sm" (click)="openIdiomaModal(i)" [title]="i18n.t('common.edit')">✏️</button>
             <button class="btn btn-ghost btn-sm" (click)="removeIdioma(i.id)" [title]="i18n.t('common.delete')">🗑️</button>

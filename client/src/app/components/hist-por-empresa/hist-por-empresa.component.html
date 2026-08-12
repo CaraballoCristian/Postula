@@ -1,0 +1,69 @@
+<!-- POR EMPRESA -->
+      <div class="card" style="padding: 0;">
+        <div class="flex items-center gap-2 px-3 py-2.5 text-xs cursor-pointer select-none" style="opacity: 0.5; border-bottom: 1px solid var(--border);" (click)="toggleEmpresaSort.emit()">
+          <span class="inline-flex items-center gap-1 font-medium">{{ i18n.t('hist.porEmpresa') }} <span class="text-[10px]">{{ empresaSortDir() === 'asc' ? '▲' : '▼' }}</span></span>
+        </div>
+        <div class="p-2 space-y-2">
+          @for (g of grupos(); track g.nombre) {
+            <div style="border: 1px solid var(--border); border-radius: 0.5rem; overflow: hidden;">
+              <div class="flex items-center gap-2 px-3 py-2 cursor-pointer select-none" [style.background-color]="openEmpresas().has(g.nombre) ? 'var(--surface-hover)' : 'transparent'" (click)="toggleEmpresa.emit(g.nombre)">
+                <span class="text-xs shrink-0" style="opacity: 0.6;">{{ openEmpresas().has(g.nombre) ? '▼' : '▶' }}</span>
+                @if (hasFavorita(g)) { <span class="text-sm shrink-0 leading-none" style="color: #f5c518;" title="{{ i18n.t('hist.favorita') }}">★</span> }
+                <span class="text-sm font-semibold flex-1 truncate">{{ g.nombre }}</span>
+                <span class="text-xs shrink-0" style="opacity: 0.45;">{{ postCountLabel(g.items.length) }}</span>
+                <div class="flex gap-1 shrink-0" (click)="$event.stopPropagation()">
+                  <button class="btn btn-ghost btn-sm" (click)="openEmpresaLinkModal.emit(g.nombre)" [title]="i18n.t('hist.editEmpresaLink')">✏️</button>
+                  <button class="btn btn-ghost btn-sm" (click)="deleteEmpresaGroup.emit(g)" [title]="i18n.t('common.delete')">🗑️</button>
+                </div>
+              </div>
+              @if (openEmpresas().has(g.nombre)) {
+                <div class="animate-fade-in" style="border-top: 1px solid var(--border);">
+                  @if (empresaLink(g.nombre)) {
+                    <div class="flex items-center gap-1.5 px-3 py-2 text-xs" style="border-bottom: 1px solid var(--border);">
+                      <span class="shrink-0" style="opacity: 0.6;">🔗</span>
+                      <a [href]="fixUrl(empresaLink(g.nombre))" target="_blank" rel="noopener" class="no-underline truncate" style="color: var(--accent);" [title]="empresaLink(g.nombre)">{{ empresaLink(g.nombre) }}</a>
+                    </div>
+                  }
+                  @if (getEmpresaMensaje(g.nombre)) {
+                    <div class="text-xs" style="border-bottom: 1px solid var(--border);">
+                      <div class="flex items-center gap-2 px-3 py-2 cursor-pointer select-none" [style.background-color]="openEmpresaMensajes().has(g.nombre) ? 'var(--surface-hover)' : 'transparent'" (click)="toggleEmpresaMensaje.emit(g.nombre)">
+                        <span class="flex-1 font-medium">🏢 {{ i18n.t('hist.expEmpresa') }}</span>
+                        <span style="opacity: 0.4;">{{ openEmpresaMensajes().has(g.nombre) ? '▲' : '▼' }}</span>
+                        <button class="btn btn-ghost btn-sm text-xs shrink-0" (click)="copy.emit(getEmpresaMensaje(g.nombre)!); $event.stopPropagation()" [title]="i18n.t('hist.copy')">📋</button>
+                      </div>
+                      @if (openEmpresaMensajes().has(g.nombre)) {
+                        <div style="border-top: 1px solid var(--border);"><pre class="text-xs whitespace-pre-wrap font-sans leading-relaxed px-3 py-2" style="margin: 0;">{{ getEmpresaMensaje(g.nombre) }}</pre></div>
+                      }
+                    </div>
+                  }
+                  <app-postulacion-table
+                    [rows]="g.items"
+                    [columns]="empresaTableColumns"
+                    [selectionMode]="selectionMode()"
+                    [trashMode]="false"
+                    [sortField]="sortField()"
+                    [sortDir]="sortDir()"
+                    [expandedId]="expandedId()"
+                    [expandedMsg]="expandedMsg()"
+                    [estados]="estados"
+                    [catNombres]="catNombres"
+                    [isSelected]="isSelected"
+                    [hideEmpresaLink]="true"
+                    (toggleFav)="toggleFav.emit($event)"
+                    (toggleSelect)="toggleSelect.emit($event)"
+                    (toggleSort)="toggleSort.emit($event)"
+                    (view)="view.emit($event)"
+                    (edit)="edit.emit($event)"
+                    (delete)="delete.emit($event)"
+                    (toggleMsg)="toggleMsg.emit($event)"
+                    (copy)="copy.emit($event)"
+                  />
+                </div>
+              }
+            </div>
+          }
+          @if (grupos().length === 0) {
+            <div class="text-center py-10" style="opacity: 0.35;">{{ i18n.t('hist.sinGrupos') }}</div>
+          }
+        </div>
+      </div>

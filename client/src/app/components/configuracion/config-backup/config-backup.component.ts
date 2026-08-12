@@ -5,6 +5,7 @@ import { SharedStateService } from '../../../services/shared-state.service';
 import { I18nService } from '../../../services/i18n.service';
 import { firstValueFrom } from 'rxjs';
 import { ImportConflictComponent, ImportConflictGroup, ImportChoice } from '../../import-conflict/import-conflict.component';
+import { markErrorHandled } from '../../../interceptors/error.interceptor';
 
 @Component({
   selector: 'app-config-backup',
@@ -77,7 +78,7 @@ export class ConfigBackupComponent {
               this.importReview.set({ data, groups });
             }
           },
-          error: (err: any) => { console.error('[backup] import preview error', err?.message, err?.status); this.dialog.toast(this.i18n.t('backup.importError'), 'error'); },
+          error: (err: any) => { markErrorHandled(err); console.error('[backup] import preview error', err?.message, err?.status); this.dialog.toast(this.i18n.t('backup.importError'), 'error'); },
         });
       } catch {
         this.dialog.toast(this.i18n.t('backup.importError'), 'error');
@@ -114,6 +115,7 @@ export class ConfigBackupComponent {
         this.shared.empresasRefresh.update(v => v + 1);
       },
       error: (err: any) => {
+        markErrorHandled(err);
         console.error('[backup] import preview/import error', err?.message, err?.status);
         this.importBusy.set(false);
         this.dialog.toast(this.i18n.t('backup.importError'), 'error');

@@ -4,6 +4,7 @@ import { AuthService } from '../../services/auth.service';
 import { I18nService } from '../../services/i18n.service';
 import { TR } from '../../i18n/es';
 import { PasswordFieldComponent } from '../password-field/password-field.component';
+import { markErrorHandled } from '../../interceptors/error.interceptor';
 
 @Component({
   selector: 'app-login',
@@ -71,6 +72,7 @@ export class LoginComponent {
         // El logout resetea el error; el estado de sesión lo maneja AppComponent.
       },
       error: (err) => {
+        markErrorHandled(err);
         this.loading.set(false);
         const msg = this.auth.errorMessage(err);
         if (msg) {

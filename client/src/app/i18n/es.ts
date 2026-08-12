@@ -99,6 +99,7 @@ export const es = {
   'common.todos': 'Todas',
   'common.error.save': 'Error al guardar',
   'common.error.delete': 'Error al eliminar',
+  'common.error.request': 'Error de conexión',
 
   // nueva postulación
   'np.categoria': 'Categoría',
@@ -155,6 +156,7 @@ export const es = {
   'hist.overwriteLinkTitle': 'Cambiar link de empresa',
   'hist.overwriteLinkMsg': 'Si continuás, el link de "{{empresa}}" se sobreescribirá de {{from}} a {{to}}.',
   'hist.overwriteCanceled': 'Guardado cancelado. El link de la empresa no cambió.',
+  'hist.renameEmpresaConfirm': 'Se renombrará "{{old}}" a "{{new}}". Se actualizarán {{count}} postulaciones. ¿Continuar?',
   'hist.linkChangeConfirm': 'Se cambiará el link de "{{empresa}}" en {{count}} postulaciones. ¿Continuar? (de {{from}} a {{to}})',
   'hist.col.fecha': 'Fecha',
   'hist.col.empresa': 'Empresa',
@@ -215,6 +217,9 @@ export const es = {
   'cfg.intro': 'Estos valores se rellenan automáticamente al generar mensajes.',
   'cfg.nuevaVariable': '+ Nueva variable',
   'cfg.refs': 'refs',
+  'cfg.refsCat': 'Templates que usan esta categoría',
+  'cfg.refsIdioma': 'Templates que usan este idioma',
+  'cfg.refsDato': 'Templates que incluyen esta variable',
   'cfg.nuevaCategoria': '+ Nueva categoría',
   'cfg.nuevoIdioma': '+ Nuevo idioma',
   'cfg.nuevoTag': '+ Nuevo estado',
