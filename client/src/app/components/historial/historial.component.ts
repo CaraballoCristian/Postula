@@ -84,14 +84,26 @@ export class HistorialComponent {
   empresaLinkModal = signal<EmpresaLinkModalData | null>(null);
 
   grupos = computed<EmpresaGrupo[]>(() => {
-    const groups = groupByEmpresa(this.filteredSorted());
+    // Empresas con postulaciones (según filtros) + empresas sin postulaciones,
+    // para que puedan editarse/eliminarse manualmente desde esta vista.
+    const byName = new Map<string, EmpresaGrupo>();
+    for (const g of groupByEmpresa(this.filteredSorted())) {
+      byName.set(g.nombre.toLowerCase().trim(), g);
+    }
+    for (const e of this.empresas()) {
+      const key = e.nombre.toLowerCase().trim();
+      if (!byName.has(key)) byName.set(key, { nombre: e.nombre, items: [] });
+    }
+    const all = [...byName.values()];
     const dir = this.empresaSortDir();
-    groups.sort((a, b) => {
+    all.sort((a, b) => {
       const cmp = a.nombre.toLowerCase().localeCompare(b.nombre.toLowerCase());
       return dir === 'asc' ? cmp : -cmp;
     });
-    return groups;
+    return all;
   });
+
+  empresaCount = computed(() => this.grupos().length);
 
   toggleEmpresaSort() { this.empresaSortDir.update(d => d === 'asc' ? 'desc' : 'asc'); }
 
@@ -620,11 +632,11 @@ export class HistorialComponent {
       empresa: empresaNom,
       estado: this.editForm.estado,
       notas: this.editForm.notas,
-      contacto_empleado: this.editForm.contacto_empleado,
+      contacto_empleado: (this.editForm.contacto_empleado || '').trim(),
     };
-    if (this.editUsed().has('oferta_laboral')) payload.oferta_laboral = this.editForm.oferta_laboral;
-    if (this.editUsed().has('nombre_empleado')) payload.nombre_empleado = this.editForm.nombre_empleado;
-    if (this.editUsed().has('puesto_empleado')) payload.puesto_empleado = this.editForm.puesto_empleado;
+    if (this.editUsed().has('oferta_laboral')) payload.oferta_laboral = (this.editForm.oferta_laboral || '').trim();
+    if (this.editUsed().has('nombre_empleado')) payload.nombre_empleado = (this.editForm.nombre_empleado || '').trim();
+    if (this.editUsed().has('puesto_empleado')) payload.puesto_empleado = (this.editForm.puesto_empleado || '').trim();
     if (prev && prev.empresa !== empresaNom) payload.link_empresa = linkNuevo;
 
     const linkPropaga = this.empresaLink(empresaNom);

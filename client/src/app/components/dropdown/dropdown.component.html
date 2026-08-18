@@ -8,7 +8,12 @@
       @if (open()) {
         <div class="absolute top-full left-0 mt-1 z-20 w-full shadow-lg" style="background: var(--surface); border: 1px solid var(--border); border-radius: 0.375rem; padding: 0.25rem; max-height: 60vh; overflow-y: auto;"
           (click)="$event.stopPropagation()">
-          @for (opt of options; track opt.value; let i = $index) {
+          @if (searchable) {
+            <div style="padding: 0.25rem 0.25rem 0.375rem;">
+              <input #searchInput [(ngModel)]="filterText" [placeholder]="placeholder" class="text-sm w-full" style="padding: 0.25rem 0.5rem;" />
+            </div>
+          }
+          @for (opt of filteredOptions(); track opt.value; let i = $index) {
             <div class="px-2.5 py-1.5 rounded cursor-pointer text-sm"
               [style.background]="(hoverIdx === i) || selected === opt.value ? 'var(--surface-hover)' : 'transparent'"
               (mouseenter)="hoverIdx = i"
