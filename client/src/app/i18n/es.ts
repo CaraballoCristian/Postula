@@ -142,6 +142,7 @@ export const es = {
   'hist.seleccionarTodo': 'Seleccionar todo',
   'hist.aplicarA': 'Aplicar a {{count}}',
   'hist.resultado': '{{count}} resultados',
+  'hist.empresas': '{{count}} empresas',
   'hist.sinEtiqueta': 'Sin etiqueta',
   'hist.sinPostulaciones': 'No hay postulaciones todavía.',
   'hist.sinGrupos': 'No hay empresas para mostrar.',

@@ -144,6 +144,7 @@ export const en: Record<TR, string> = {
   'hist.seleccionarTodo': 'Select all',
   'hist.aplicarA': 'Apply to {{count}}',
   'hist.resultado': '{{count}} results',
+  'hist.empresas': '{{count}} companies',
   'hist.sinEtiqueta': 'No label',
   'hist.sinPostulaciones': 'No applications yet.',
   'hist.sinGrupos': 'No companies to show.',

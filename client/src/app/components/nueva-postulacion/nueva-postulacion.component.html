@@ -68,6 +68,7 @@
                         (selectedChange)="onEmpresaSelected($event)"
                         [options]="empresaOpts()"
                         [placeholder]="i18n.t('np.selectEmpresa')"
+                        [searchable]="true"
                       />
                     </div>
                     <button class="btn btn-outline" style="flex-shrink: 0; padding: 0.4rem 0.75rem;" (click)="openEmpresaModal()" [title]="i18n.t('np.crearEmpresa')">＋</button>

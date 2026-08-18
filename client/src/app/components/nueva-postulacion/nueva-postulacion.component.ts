@@ -333,7 +333,7 @@ crearEmpresa(data: { nombre: string; link: string }) {
   async guardarPostulacion() {
     const sel = this.selected().filter(s => s.template);
     const vals = this.fieldValues();
-    const nombre = vals['empresa'] || '';
+    const nombre = (vals['empresa'] || '').trim();
     const byTipo: Record<string, string | null> = { email: null, mensaje_empresa: null, mensaje_recruiter: null };
     for (const r of this.resultados()) byTipo[r.tipo] = r.texto;
 
@@ -360,11 +360,11 @@ crearEmpresa(data: { nombre: string; link: string }) {
     }
 
     this.api.createPostulacion({
-      empresa: nombre, oferta_laboral: vals['oferta_laboral'] || '', categoria_id: this.categoriaId, idioma: this.idioma,
-      nombre_empleado: vals['nombre_empleado'] || '', puesto_empleado: vals['puesto_empleado'] || '',
+      empresa: nombre, oferta_laboral: (vals['oferta_laboral'] || '').trim(), categoria_id: this.categoriaId, idioma: this.idioma,
+      nombre_empleado: (vals['nombre_empleado'] || '').trim(), puesto_empleado: (vals['puesto_empleado'] || '').trim(),
       template_ids: sel.map(s => s.template!.id), valores_usados: vals,
       resultado_email: byTipo['email'], resultado_empresa: byTipo['mensaje_empresa'], resultado_recruiter: byTipo['mensaje_recruiter'],
-      notas: this.notas, estado: this.estado, link_empresa: this.linkEmpresa, contacto_empleado: this.contactoEmpleado,
+      notas: this.notas, estado: this.estado, link_empresa: this.linkEmpresa, contacto_empleado: (this.contactoEmpleado || '').trim(),
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
         this.shared.historialRefresh.update(v => v + 1);

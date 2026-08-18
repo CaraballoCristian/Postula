@@ -102,7 +102,7 @@
             <button class="view-pill" [class.active]="viewMode() === 'empresa'" (click)="setView.emit('empresa')">▣ {{ i18n.t('hist.porEmpresa') }}</button>
           </div>
         }
-        <span class="text-xs ml-auto" style="opacity: 0.4;">{{ i18n.t('hist.resultado', { count: filteredCount() }) }}</span>
+        <span class="text-xs ml-auto" style="opacity: 0.4;">{{ viewMode() === 'empresa' ? i18n.t('hist.empresas', { count: empresaCount() }) : i18n.t('hist.resultado', { count: filteredCount() }) }}</span>
         <button class="toggle-pill" [class.active]="trashMode()" [title]="i18n.t(trashMode() ? 'pap.cerrar' : 'pap.ver')" (click)="toggleTrash.emit()">{{ trashMode() ? '✖' : '🗑️' }}</button>
       </div>
         

@@ -23,6 +23,7 @@ export class HistFiltrosComponent {
   @Input() selectedIds!: WritableSignal<Set<number>>;
   @Input() trashMode!: WritableSignal<boolean>;
   @Input() filteredCount!: Signal<number>;
+  @Input() empresaCount!: Signal<number>;
   @Input() bulkEstado = '';
   @Input() OTRAS = '';
   @Input() estadoLabel: (v: string) => string = (v) => v;

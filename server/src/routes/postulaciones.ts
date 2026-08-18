@@ -93,12 +93,12 @@ router.post('/', (req: AuthRequest, res: Response) => {
 
   const result = stmt.run(
     userId,
-    empresa || '',
-    oferta_laboral || '',
+    typeof empresa === 'string' ? empresa.trim() : '',
+    typeof oferta_laboral === 'string' ? oferta_laboral.trim() : '',
     categoria_id || null,
     idioma || null,
-    nombre_empleado || '',
-    puesto_empleado || '',
+    typeof nombre_empleado === 'string' ? nombre_empleado.trim() : '',
+    typeof puesto_empleado === 'string' ? puesto_empleado.trim() : '',
     JSON.stringify(template_ids || []),
     JSON.stringify(valores_usados || {}),
     resultado_email || null,
@@ -166,15 +166,15 @@ router.put('/:id', (req: AuthRequest, res: Response) => {
       valores_usados = COALESCE(?, valores_usados)
     WHERE id = ? AND user_id = ?
   `).run(
-    empresa !== undefined ? empresa : null,
-    oferta_laboral !== undefined ? oferta_laboral : null,
+    empresa !== undefined ? (typeof empresa === 'string' ? empresa.trim() : empresa) : null,
+    oferta_laboral !== undefined ? (typeof oferta_laboral === 'string' ? oferta_laboral.trim() : oferta_laboral) : null,
     categoria_id !== undefined ? categoria_id : null,
     idioma !== undefined ? idioma : null,
-    nombre_empleado !== undefined ? nombre_empleado : null,
-    puesto_empleado !== undefined ? puesto_empleado : null,
+    nombre_empleado !== undefined ? (typeof nombre_empleado === 'string' ? nombre_empleado.trim() : nombre_empleado) : null,
+    puesto_empleado !== undefined ? (typeof puesto_empleado === 'string' ? puesto_empleado.trim() : puesto_empleado) : null,
     estado !== undefined ? estado : null,
     notas !== undefined ? notas : null,
-    contacto_empleado !== undefined ? contacto_empleado : null,
+    contacto_empleado !== undefined ? (typeof contacto_empleado === 'string' ? contacto_empleado.trim() : contacto_empleado) : null,
     favorito !== undefined ? favorito : null,
     resultado_email !== undefined ? resultado_email : null,
     resultado_recruiter !== undefined ? resultado_recruiter : null,

@@ -18,6 +18,9 @@
               </div>
               @if (openEmpresas().has(g.nombre)) {
                 <div class="animate-fade-in" style="border-top: 1px solid var(--border);">
+                  @if (g.items.length === 0) {
+                    <div class="text-xs px-3 py-2" style="opacity: 0.45;">{{ i18n.t('hist.sinPostulaciones') }}</div>
+                  }
                   @if (empresaLink(g.nombre)) {
                     <div class="flex items-center gap-1.5 px-3 py-2 text-xs" style="border-bottom: 1px solid var(--border);">
                       <span class="shrink-0" style="opacity: 0.6;">🔗</span>
