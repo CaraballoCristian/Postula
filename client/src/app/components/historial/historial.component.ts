@@ -547,6 +547,11 @@ export class HistorialComponent {
     });
   }
 
+  enterSelectionModeWithId(id: number) {
+    this.selectionMode.set(true);
+    this.selectedIds.set(new Set([id]));
+  }
+
   selectAll() {
     const visible = this.filteredSorted();
     this.selectedIds.set(new Set(visible.map(p => p.id)));

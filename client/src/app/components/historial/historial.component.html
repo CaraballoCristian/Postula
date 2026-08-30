@@ -63,6 +63,7 @@
     (deleteForGood)="deleteForGood($event)"
     (toggleMsg)="toggleMsg($event)"
     (copy)="copyMsg($event)"
+    (longPressStart)="enterSelectionModeWithId($event)"
   />
   } @else if (viewMode() === 'empresa') {
   <app-hist-por-empresa
