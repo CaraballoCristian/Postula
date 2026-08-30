@@ -311,6 +311,11 @@ export class HistorialComponent {
       if (this.shared.activeTab() === 'historial') this.focusSearchTick.update(v => v + 1);
     });
     effect(() => this.persistFilters());
+    effect(() => {
+      if (this.selectionMode() && this.selectedIds().size === 0 && window.innerWidth < 640) {
+        this.selectionMode.set(false);
+      }
+    });
     document.addEventListener('click', this.closeDropdown);
     this.destroyRef.onDestroy(() => document.removeEventListener('click', this.closeDropdown));
   }
