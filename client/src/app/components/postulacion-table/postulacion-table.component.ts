@@ -50,6 +50,22 @@ export class PostulacionTableComponent {
 
   constructor(public i18n: I18nService) {}
 
+  onRowClick(p: Postulacion, event: Event) {
+    if (!this.selectionMode) return;
+    const target = event.target as HTMLElement;
+    if (target.closest('.actions-cell') || target.closest('input[type="checkbox"]')) return;
+    this.toggleSelect.emit(p.id);
+  }
+
+  onFavClick(p: Postulacion, event: Event) {
+    if (this.selectionMode) {
+      this.toggleSelect.emit(p.id);
+    } else {
+      this.toggleFav.emit(p);
+      event.stopPropagation();
+    }
+  }
+
   get colspan(): number {
     return (this.selectionMode ? 1 : 0) + this.columns.length + 1;
   }

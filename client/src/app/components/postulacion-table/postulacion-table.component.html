@@ -14,14 +14,14 @@
           </thead>
           <tbody>
             @for (p of rows; track p.id; let i = $index) {
-              <tr class="cursor-pointer transition-colors animate-stagger-row" [style.animation-delay]="stagger(i)" style="border-bottom: 1px solid var(--border); -webkit-touch-callout: none;" [style.background-color]="expandedId === p.id ? 'var(--surface-hover)' : (hoverRow === p.id ? 'var(--surface-hover)' : 'transparent')" (mouseenter)="hoverRow = p.id" (mouseleave)="hoverRow = null" (touchstart)="onTouchStart(p.id, $event)" (touchend)="onTouchEnd()" (touchmove)="onTouchMove()">
+              <tr class="cursor-pointer transition-colors animate-stagger-row" [style.animation-delay]="stagger(i)" style="border-bottom: 1px solid var(--border); -webkit-touch-callout: none;" [style.background-color]="expandedId === p.id ? 'var(--surface-hover)' : (hoverRow === p.id ? 'var(--surface-hover)' : 'transparent')" (mouseenter)="hoverRow = p.id" (mouseleave)="hoverRow = null" (touchstart)="onTouchStart(p.id, $event)" (touchend)="onTouchEnd()" (touchmove)="onTouchMove()" (click)="onRowClick(p, $event)">
                 @if (selectionMode) {
                   <td class="px-3 py-2.5" (click)="$event.stopPropagation()">
                     <input type="checkbox" [checked]="isSelected(p.id)" (change)="toggleSelect.emit(p.id)" class="w-3.5 h-3.5" style="accent-color: var(--accent);" />
                   </td>
                 }
                 @if (show('favorito')) {
-                  <td class="px-3 py-2.5 text-center" (click)="toggleFav.emit(p); $event.stopPropagation()" [title]="i18n.t('hist.titFavorito')">
+                  <td class="px-3 py-2.5 text-center" (click)="onFavClick(p, $event)" [title]="i18n.t('hist.titFavorito')">
                     <span class="cursor-pointer select-none">{{ p.favorito ? '⭐' : '☆' }}</span>
                   </td>
                 }
@@ -63,7 +63,7 @@
                     <span class="badge text-[0.65rem]" [style.background-color]="estadoColor(p.estado)" [style.color]="estadoTextColor(p.estado)">{{ estadoLabel(p.estado) }}</span>
                   </td>
                 }
-                <td class="px-3 py-2.5 text-right" style="border-left: 1px solid var(--border);">
+                <td class="actions-cell px-3 py-2.5 text-right" style="border-left: 1px solid var(--border);">
                   <div class="flex gap-1 justify-end">
                     @if (trashMode) {
                       <button class="btn btn-ghost btn-sm" (click)="restore.emit(p.id)" [title]="i18n.t('pap.restore')">↩️</button>
