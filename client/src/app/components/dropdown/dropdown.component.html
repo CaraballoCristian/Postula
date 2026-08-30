@@ -10,14 +10,13 @@
           (click)="$event.stopPropagation()">
           @if (searchable) {
             <div style="padding: 0.25rem 0.25rem 0.375rem;">
-              <input #searchInput [(ngModel)]="filterText" [placeholder]="placeholder" class="text-sm w-full" style="padding: 0.25rem 0.5rem;" />
+              <input #searchInput [(ngModel)]="filterText" [placeholder]="placeholder" class="text-sm w-full" style="padding: 0.25rem 0.5rem;" (keydown)="onKeydown($event)" />
             </div>
           }
           @for (opt of filteredOptions(); track opt.value; let i = $index) {
             <div class="px-2.5 py-1.5 rounded cursor-pointer text-sm"
-              [style.background]="(hoverIdx === i) || selected === opt.value ? 'var(--surface-hover)' : 'transparent'"
-              (mouseenter)="hoverIdx = i"
-              (mouseleave)="hoverIdx = null"
+              [style.background]="highlightIdx() === i || selected === opt.value ? 'var(--surface-hover)' : 'transparent'"
+              (mouseenter)="highlightIdx.set(i)"
               (click)="select(opt.value)">
               {{ opt.label }}
             </div>

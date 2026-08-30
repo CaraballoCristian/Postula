@@ -1,4 +1,4 @@
-import { Component, Input, Output, EventEmitter, WritableSignal, Signal } from '@angular/core';
+import { Component, Input, Output, EventEmitter, WritableSignal, Signal, ViewChild, ElementRef, effect } from '@angular/core';
 import { FormsModule } from '@angular/forms';
 import { Categoria, EstadoOption } from '../../models/interfaces';
 import { I18nService } from '../../services/i18n.service';
@@ -24,6 +24,7 @@ export class HistFiltrosComponent {
   @Input() trashMode!: WritableSignal<boolean>;
   @Input() filteredCount!: Signal<number>;
   @Input() empresaCount!: Signal<number>;
+  @Input() focusSearchTick!: Signal<number>;
   @Input() bulkEstado = '';
   @Input() OTRAS = '';
   @Input() estadoLabel: (v: string) => string = (v) => v;
@@ -36,7 +37,14 @@ export class HistFiltrosComponent {
   @Output() applyBulk = new EventEmitter<void>();
   @Output() bulkDelete = new EventEmitter<void>();
 
-  constructor(public i18n: I18nService) {}
+  @ViewChild('searchInput') searchInput?: ElementRef<HTMLInputElement>;
+
+  constructor(public i18n: I18nService) {
+    effect(() => {
+      const tick = this.focusSearchTick();
+      if (tick > 0) setTimeout(() => this.searchInput?.nativeElement.focus(), 0);
+    });
+  }
 
   toggleDropdown(type: 'cat' | 'est' | 'idioma') {
     this.openDropdown.update(v => v === type ? null : type);
