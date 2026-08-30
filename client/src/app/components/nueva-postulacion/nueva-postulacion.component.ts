@@ -57,6 +57,8 @@ estado = DEFAULT_ESTADO;
   empresas = signal<Empresa[]>([]);
   selectedEmpresaId: number | null = null;
   empresaLinkOriginal = '';
+  private readonly LAST_EMPRESA_KEY = 'postulatool.lastEmpresa';
+  private lastEmpresaApplied = false;
 
   private inited = false;
   private templatesInitialized = false;
@@ -77,6 +79,19 @@ estado = DEFAULT_ESTADO;
     effect(() => { void shared.idiomasRefresh(); if (this.inited) this.loadIdiomas(); });
     effect(() => { void shared.empresasRefresh(); if (this.inited) this.loadEmpresas(); });
     effect(() => { void shared.configRefresh(); if (this.inited) this.reloadConfigKeys(); });
+    // Preselecciona la última empresa usada al arrancar (una sola vez por carga).
+    effect(() => {
+      this.dynamicFields();
+      if (this.lastEmpresaApplied) return;
+      if (!this.dynamicFields().some(f => f.key === 'empresa')) return;
+      if ((this.fieldValues()['empresa'] || '').trim()) return;
+      const saved = localStorage.getItem(this.LAST_EMPRESA_KEY);
+      if (!saved) return;
+      this.lastEmpresaApplied = true;
+      const e = this.empresas().find(x => x.nombre.trim().toLowerCase() === saved.trim().toLowerCase());
+      if (e) this.onEmpresaSelected(e.nombre);
+      else this.setField('empresa', saved.trim());
+    });
   }
 
   ngOnInit() {
@@ -367,6 +382,7 @@ crearEmpresa(data: { nombre: string; link: string }) {
       notas: this.notas, estado: this.estado, link_empresa: this.linkEmpresa, contacto_empleado: (this.contactoEmpleado || '').trim(),
     }).pipe(takeUntilDestroyed(this.destroyRef)).subscribe({
       next: () => {
+        if (nombre) localStorage.setItem(this.LAST_EMPRESA_KEY, nombre);
         this.shared.historialRefresh.update(v => v + 1);
         this.dialog.toast(this.i18n.t('np.saved'));
         const defaults = this.templatesByTipo('mensaje_recruiter');

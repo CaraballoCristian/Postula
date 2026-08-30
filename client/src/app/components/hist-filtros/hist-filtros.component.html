@@ -3,13 +3,18 @@
       <div class="flex flex-col gap-2">
         <div class="flex flex-col sm:flex-row gap-2 sm:gap-3">
         
-      <div class="relative sm:w-4/12">
-          <input [ngModel]="filtroGlobal()" (ngModelChange)="filtroGlobal.set($event)" [placeholder]="i18n.t('hist.buscar')" class="text-sm w-full pr-7" />
-          @if (filtroGlobal()) {
-            <button class="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full text-xs border-0 cursor-pointer bg-transparent" style="opacity: 0.4; color: var(--text);" (click)="filtroGlobal.set('')" [title]="i18n.t('hist.limpiar')">×</button>
-          }
+      <div class="flex items-center gap-2 sm:w-4/12">
+          <div class="relative flex-1">
+            <input #searchInput [ngModel]="filtroGlobal()" (ngModelChange)="filtroGlobal.set($event)" [placeholder]="i18n.t('hist.buscar')" class="text-sm w-full pr-7" />
+            @if (filtroGlobal()) {
+              <button class="absolute right-1.5 top-1/2 -translate-y-1/2 w-5 h-5 flex items-center justify-center rounded-full text-xs border-0 cursor-pointer bg-transparent" style="opacity: 0.4; color: var(--text);" (click)="filtroGlobal.set('')" [title]="i18n.t('hist.limpiar')">×</button>
+            }
+          </div>
+          <button class="sm:hidden shrink-0 w-8 h-8 flex items-center justify-center rounded-md border cursor-pointer" style="border-color: var(--border); background: var(--surface); color: var(--text);" (click)="filtersOpen.set(!filtersOpen())" title="Filtros">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><polygon points="22 3 2 3 10 12.46 10 19 14 21 14 12.46 22 3"></polygon></svg>
+          </button>
         </div>
-        <div class="relative w-full sm:w-3/12">
+        <div class="relative w-full sm:w-3/12 sm:block" [class.hidden]="!filtersOpen()">
           <button class="text-sm flex items-center justify-between pl-2 pr-1 py-2 rounded-md cursor-pointer border w-full" style="border-color: var(--border); background: var(--surface); color: var(--text);" (click)="toggleDropdown('cat'); $event.stopPropagation()">
             <span>{{ i18n.t('hist.categorias') }}</span>
             <span>▾</span>
@@ -25,7 +30,7 @@
             </div>
           }
         </div>
-        <div class="relative w-full sm:w-3/12">
+        <div class="relative w-full sm:w-3/12 sm:block" [class.hidden]="!filtersOpen()">
           <button class="text-sm flex items-center justify-between pl-2 pr-1 py-2 rounded-md cursor-pointer border w-full" style="border-color: var(--border); background: var(--surface); color: var(--text);" (click)="toggleDropdown('est'); $event.stopPropagation()">
             <span>{{ i18n.t('hist.estados') }}</span>
             <span>▾</span>
@@ -41,7 +46,7 @@
             </div>
           }
         </div>
-        <div class="relative w-full sm:w-2/12">
+        <div class="relative w-full sm:w-2/12 sm:block" [class.hidden]="!filtersOpen()">
             <button class="text-sm flex items-center justify-between pl-2 pr-1 py-2 rounded-md cursor-pointer border w-full" style="border-color: var(--border); background: var(--surface); color: var(--text);" (click)="toggleDropdown('idioma'); $event.stopPropagation()">
               <span>{{ i18n.t('hist.idiomas') }}</span>
               <span>▾</span>
@@ -95,14 +100,14 @@
       </div>
 
       <!-- FILA DE VISTA: toggle tabla/por empresa + contador + papelera -->
-      <div class="flex items-center gap-2 sm:gap-3 flex-wrap mt-1">
+      <div class="flex items-center gap-2 sm:gap-3 sm:flex-wrap mt-1">
         @if (!trashMode()) {
           <div class="flex items-center gap-0.5 p-0.5 border rounded-md" style="border-color: var(--border); background: var(--surface);">
             <button class="view-pill" [class.active]="viewMode() === 'tabla'" (click)="setView.emit('tabla')">☰ {{ i18n.t('hist.tabla') }}</button>
             <button class="view-pill" [class.active]="viewMode() === 'empresa'" (click)="setView.emit('empresa')">▣ {{ i18n.t('hist.porEmpresa') }}</button>
           </div>
         }
-        <span class="text-xs ml-auto" style="opacity: 0.4;">{{ viewMode() === 'empresa' ? i18n.t('hist.empresas', { count: empresaCount() }) : i18n.t('hist.resultado', { count: filteredCount() }) }}</span>
+        <span class="text-[10px] sm:text-xs ml-auto whitespace-nowrap" style="opacity: 0.4;">{{ viewMode() === 'empresa' ? i18n.t('hist.empresas', { count: empresaCount() }) : i18n.t('hist.resultado', { count: filteredCount() }) }}</span>
         <button class="toggle-pill" [class.active]="trashMode()" [title]="i18n.t(trashMode() ? 'pap.cerrar' : 'pap.ver')" (click)="toggleTrash.emit()">{{ trashMode() ? '✖' : '🗑️' }}</button>
       </div>
         

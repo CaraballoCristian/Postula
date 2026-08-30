@@ -86,6 +86,7 @@ export class HistorialComponent {
   grupos = computed<EmpresaGrupo[]>(() => {
     // Empresas con postulaciones (según filtros) + empresas sin postulaciones,
     // para que puedan editarse/eliminarse manualmente desde esta vista.
+    const q = this.filtroGlobal().toLowerCase().trim();
     const byName = new Map<string, EmpresaGrupo>();
     for (const g of groupByEmpresa(this.filteredSorted())) {
       byName.set(g.nombre.toLowerCase().trim(), g);
@@ -94,7 +95,13 @@ export class HistorialComponent {
       const key = e.nombre.toLowerCase().trim();
       if (!byName.has(key)) byName.set(key, { nombre: e.nombre, items: [] });
     }
-    const all = [...byName.values()];
+    let all = [...byName.values()];
+    if (q) {
+      // Con búsqueda activa: quedan los grupos con postulaciones que coinciden
+      // (empresa/oferta/nombre/puesto, ya filtrados en filteredSorted) y las
+      // empresas sin postulaciones cuyo nombre coincide con el texto.
+      all = all.filter(g => g.items.length > 0 || g.nombre.toLowerCase().includes(q));
+    }
     const dir = this.empresaSortDir();
     all.sort((a, b) => {
       const cmp = a.nombre.toLowerCase().localeCompare(b.nombre.toLowerCase());
@@ -300,6 +307,9 @@ export class HistorialComponent {
         this.loaded.set(true);
       }
     });
+    effect(() => {
+      if (this.shared.activeTab() === 'historial') this.focusSearchTick.update(v => v + 1);
+    });
     effect(() => this.persistFilters());
     document.addEventListener('click', this.closeDropdown);
     this.destroyRef.onDestroy(() => document.removeEventListener('click', this.closeDropdown));
@@ -442,6 +452,7 @@ export class HistorialComponent {
   }
 
   filteredCount = computed(() => this.filteredSorted().length);
+  focusSearchTick = signal(0);
 
   setView(v: 'tabla' | 'empresa') {
     this.viewMode.set(v);

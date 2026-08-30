@@ -30,7 +30,7 @@
                 }
                 @if (show('empresa')) {
                   <td class="px-3 py-2.5 font-medium" style="white-space: nowrap; border-left: 1px solid var(--border);">
-                    <span style="display: inline-block; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: text-bottom;">{{ p.empresa }}</span>
+                    <span style="display: inline-block; max-width: 140px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: text-bottom;" [title]="p.empresa">{{ p.empresa }}</span>
                     @if (p.link_empresa) {
                       <a [href]="fixUrl(p.link_empresa)" target="_blank" rel="noopener" class="ml-1 no-underline" style="color: var(--accent);" [title]="i18n.t('hist.abrirLink')">↗</a>
                     }
@@ -45,18 +45,18 @@
                   <td class="px-3 py-2.5" style="border-left: 1px solid var(--border);">{{ p.idioma || '—' }}</td>
                 }
                 @if (show('oferta_laboral')) {
-                  <td class="px-3 py-2.5" style="max-width: 90px; white-space: nowrap; border-left: 1px solid var(--border);"><span style="display: inline-block; max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: text-bottom;">{{ p.oferta_laboral || '—' }}</span></td>
+                  <td class="px-3 py-2.5" style="max-width: 90px; white-space: nowrap; border-left: 1px solid var(--border);"><span style="display: inline-block; max-width: 70px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: text-bottom;" [title]="p.oferta_laboral || '—'">{{ p.oferta_laboral || '—' }}</span></td>
                 }
                 @if (show('nombre_empleado')) {
                   <td class="px-3 py-2.5" style="white-space: nowrap; border-left: 1px solid var(--border);">
-                    <span style="display: inline-block; max-width: 85px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: text-bottom;">{{ p.nombre_empleado || '—' }}</span>
+                    <span style="display: inline-block; max-width: 85px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: text-bottom;" [title]="p.nombre_empleado || '—'">{{ p.nombre_empleado || '—' }}</span>
                     @if (p.contacto_empleado) {
                       <a [href]="fixUrl(p.contacto_empleado)" target="_blank" rel="noopener" class="ml-1 no-underline" style="color: var(--accent);" [title]="i18n.t('hist.abrirLink')">↗</a>
                     }
                   </td>
                 }
                 @if (show('puesto_empleado')) {
-                  <td class="px-3 py-2.5" style="white-space: nowrap; border-left: 1px solid var(--border);"><span style="display: inline-block; max-width: 75px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: text-bottom;">{{ p.puesto_empleado || '—' }}</span></td>
+                  <td class="px-3 py-2.5" style="white-space: nowrap; border-left: 1px solid var(--border);"><span style="display: inline-block; max-width: 75px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: text-bottom;" [title]="p.puesto_empleado || '—'">{{ p.puesto_empleado || '—' }}</span></td>
                 }
                 @if (show('estado')) {
                   <td class="px-3 py-2.5" style="border-left: 1px solid var(--border);">
