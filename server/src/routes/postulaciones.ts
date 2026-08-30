@@ -82,14 +82,15 @@ router.post('/', (req: AuthRequest, res: Response) => {
   const stmt = db.prepare(`
     INSERT INTO postulaciones (user_id, empresa, oferta_laboral, categoria_id, idioma, nombre_empleado, puesto_empleado,
       template_ids, valores_usados, resultado_email, resultado_empresa, resultado_recruiter,
-      notas, estado, link_empresa, contacto_empleado, favorito)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      notas, estado, link_empresa, contacto_empleado, favorito, fecha)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `);
 
   // El link/mensaje de empresa se guarda en la tabla `empresas` (fuente única), no
   // duplicado por postulación. Las columnas de la postulación quedan vacías.
   const msgEmp = typeof resultado_empresa === 'string' && resultado_empresa.trim() ? resultado_empresa.trim() : '';
   const linkEmp = typeof link_empresa === 'string' && link_empresa.trim() ? link_empresa.trim() : '';
+  const fecha = (db.prepare("SELECT datetime('now', 'localtime') as f").get() as any).f;
 
   const result = stmt.run(
     userId,
@@ -109,6 +110,7 @@ router.post('/', (req: AuthRequest, res: Response) => {
     '',
     contacto_empleado || '',
     favorito || 0,
+    fecha,
   );
 
   if ((msgEmp || linkEmp) && empresa) {
