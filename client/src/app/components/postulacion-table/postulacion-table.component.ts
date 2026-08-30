@@ -41,8 +41,12 @@ export class PostulacionTableComponent {
   @Output() toggleMsg = new EventEmitter<string>();
   @Output() copy = new EventEmitter<string>();
 
+  @Output() longPressStart = new EventEmitter<number>();
+
   msgTipos = ['email', 'mensaje_empresa', 'mensaje_recruiter'];
   hoverRow: number | null = null;
+  private longPressTimer: any = null;
+  longPressTriggered = false;
 
   constructor(public i18n: I18nService) {}
 
@@ -87,5 +91,28 @@ export class PostulacionTableComponent {
 
   stagger(i: number): string {
     return staggerUtil(i);
+  }
+
+  onTouchStart(id: number, event: TouchEvent) {
+    if (this.selectionMode) return;
+    this.longPressTriggered = false;
+    this.longPressTimer = setTimeout(() => {
+      this.longPressTriggered = true;
+      this.longPressStart.emit(id);
+    }, 500);
+  }
+
+  onTouchEnd() {
+    if (this.longPressTimer) {
+      clearTimeout(this.longPressTimer);
+      this.longPressTimer = null;
+    }
+  }
+
+  onTouchMove() {
+    if (this.longPressTimer) {
+      clearTimeout(this.longPressTimer);
+      this.longPressTimer = null;
+    }
   }
 }

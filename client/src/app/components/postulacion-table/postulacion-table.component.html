@@ -14,7 +14,7 @@
           </thead>
           <tbody>
             @for (p of rows; track p.id; let i = $index) {
-              <tr class="cursor-pointer transition-colors animate-stagger-row" [style.animation-delay]="stagger(i)" style="border-bottom: 1px solid var(--border);" [style.background-color]="expandedId === p.id ? 'var(--surface-hover)' : (hoverRow === p.id ? 'var(--surface-hover)' : 'transparent')" (mouseenter)="hoverRow = p.id" (mouseleave)="hoverRow = null">
+              <tr class="cursor-pointer transition-colors animate-stagger-row" [style.animation-delay]="stagger(i)" style="border-bottom: 1px solid var(--border); -webkit-touch-callout: none;" [style.background-color]="expandedId === p.id ? 'var(--surface-hover)' : (hoverRow === p.id ? 'var(--surface-hover)' : 'transparent')" (mouseenter)="hoverRow = p.id" (mouseleave)="hoverRow = null" (touchstart)="onTouchStart(p.id, $event)" (touchend)="onTouchEnd()" (touchmove)="onTouchMove()">
                 @if (selectionMode) {
                   <td class="px-3 py-2.5" (click)="$event.stopPropagation()">
                     <input type="checkbox" [checked]="isSelected(p.id)" (change)="toggleSelect.emit(p.id)" class="w-3.5 h-3.5" style="accent-color: var(--accent);" />
