@@ -399,6 +399,7 @@ crearEmpresa(data: { nombre: string; link: string }) {
         this.selectedEmpresaId = null;
         this.empresaLinkOriginal = '';
         this.buildDynamicFields();
+        this.lastEmpresaApplied = false;
         window.scrollTo({ top: 0, behavior: 'smooth' });
       },
       error: () => this.dialog.toast(this.i18n.t('np.saveError'), 'error'),
